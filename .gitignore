@@ -1,0 +1,4 @@
+# Ignore tracking files
+tracking/**
+# Ignore log files
+logs/**
