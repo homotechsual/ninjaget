@@ -8,14 +8,17 @@ function Test-NinjaGetInstalled {
 }
 # Test internet connection - tests if the computer has an internet connection.
 function Test-InternetConnection {
-    $TestURI = 'https://raw.githubusercontent.com/homotechsual/ninjaget/main/LICENSE.md'
-    $InternetConnection = Test-Connection -ComputerName 'www.google.com' -Count 1 -Quiet
-    if ($InternetConnection) {
-        Write-NGLog -LogMsg 'Internet connection is available.' -LogColour 'Green'
-        return $true
-    } else {
-        Write-NGLog -LogMsg 'Internet connection is not available.' -LogColour 'Red'
-        return $false
+    $TimeOut = 0
+    While ($TimeOut -lt 1800) {
+        $TestURI = 'https://raw.githubusercontent.com/homotechsual/ninjaget/main/LICENSE.md'
+        $TestContent = (Invoke-WebRequest -Uri $TestURI -UseBasicParsing).Content
+        if ($TestContent -match 'MIT License') {
+            Write-NGLog -LogMsg 'Internet connection is available.' -LogColour 'Green'
+            return $true
+        } else {
+            Write-NGLog -LogMsg 'Internet connection is not available.' -LogColour 'Red'
+            return $false
+        }
     }
 }
 # Test metered connection - tests if the network connection is metered.
