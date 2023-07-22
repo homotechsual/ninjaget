@@ -1,4 +1,4 @@
 # Ignore tracking files
-tracking/**
+tracking
 # Ignore log files
-logs/**
+logs
