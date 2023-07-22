@@ -21,23 +21,23 @@ function Invoke-NinjaGetNotification {
         # Run in the user's context.
         [Switch]$UserContext = $false
     )
-    if (($Script:NotificationLevel -eq 'Full') -or ($Script:NotificationLevel -eq 'SuccessOnly' -and $MessageType -eq 'Success') -or ($UserContext)) {
+    if (($Script:NotificationLevel -eq 'Full') -or ($Script:NotificationLevel -eq 'SuccessOnly' -and $MessageType -eq 'Success') -or ($Script:NotificationLevel -eq 'ErrorOnly' -and $MessageType -eq 'Error') -or ($UserContext)) {
         # Create an XML toast template.
         [XML]$ToastTemplate = [System.Xml.XmlDocument]::new()
         $ToastTemplate.LoadXml('<?xml version="1.0" encoding="utf-8"?><toast></toast>')
         # Create the visual node in the XML.
-        $Visual = $ToastTemplate.CreateElement('visual') | Out-Null
+        $Visual = $ToastTemplate.CreateElement('visual')
         # Create the binding node in the XML.
-        $Binding = $ToastTemplate.CreateElement('binding') | Out-Null
+        $Binding = $ToastTemplate.CreateElement('binding')
         # Append the binding node to the visual node.
         $Visual.AppendChild($Binding) | Out-Null
         # Set the template attribute of the binding node.
         $Binding.SetAttribute('template', 'ToastGeneric') | Out-Null
         # Add the image to the toast template.
-        $ImagePath = "$Script:InstallPath\Icons\$MessageType.png"
+        $ImagePath = "$Script:InstallPath\resources\$MessageType.png"
         if (Test-Path -Path $ImagePath) {
             # Create the image node in the XML.
-            $Image = $ToastTemplate.CreateElement('image') | Out-Null
+            $Image = $ToastTemplate.CreateElement('image')
             # Append the image node to the binding node.
             $Binding.AppendChild($Image) | Out-Null
             # Set the placement attribute of the image node.
@@ -48,9 +48,9 @@ function Invoke-NinjaGetNotification {
         # Add the title to the toast template.
         if ($Title) {
             # Create the title node in the XML.
-            $TitleNode = $ToastTemplate.CreateElement('text') | Out-Null
+            $TitleNode = $ToastTemplate.CreateElement('text')
             # Create the title text node in the XML.
-            $TitleTextNode = $ToastTemplate.CreateTextNode($Title) | Out-Null
+            $TitleTextNode = $ToastTemplate.CreateTextNode($Title)
             # Append the title text node to the title node.
             $TitleNode.AppendChild($TitleTextNode) | Out-Null
             # Append the title node to the binding node.
@@ -59,9 +59,9 @@ function Invoke-NinjaGetNotification {
         # Add the message to the toast template.
         if ($Message) {
             # Create the message node in the XML.
-            $MessageNode = $ToastTemplate.CreateElement('text') | Out-Null
+            $MessageNode = $ToastTemplate.CreateElement('text')
             # Create the message text node in the XML.
-            $MessageTextNode = $ToastTemplate.CreateTextNode($Message) | Out-Null
+            $MessageTextNode = $ToastTemplate.CreateTextNode($Message)
             # Append the message text node to the message node.
             $MessageNode.AppendChild($MessageTextNode) | Out-Null
             # Append the message node to the binding node.
@@ -70,17 +70,17 @@ function Invoke-NinjaGetNotification {
         # Add the body to the toast template.
         if ($Body) {
             # Create a group node in the XML.
-            $Group = $ToastTemplate.CreateElement('group') | Out-Null
+            $Group = $ToastTemplate.CreateElement('group')
             # Append the group node to the binding node.
             $Binding.AppendChild($Group) | Out-Null
             # Create a sub-group node in the XML.
-            $SubGroup = $ToastTemplate.CreateElement('subgroup') | Out-Null
+            $SubGroup = $ToastTemplate.CreateElement('subgroup')
             # Append the sub-group node to the group node.
             $Group.AppendChild($SubGroup) | Out-Null
             # Create the body node in the XML.
-            $BodyNode = $ToastTemplate.CreateElement('text') | Out-Null
+            $BodyNode = $ToastTemplate.CreateElement('text')
             # Create the body text node in the XML.
-            $BodyTextNode = $ToastTemplate.CreateTextNode($Body) | Out-Null
+            $BodyTextNode = $ToastTemplate.CreateTextNode($Body)
             # Append the body text node to the body node.
             $BodyNode.AppendChild($BodyTextNode) | Out-Null
             # Append the body node to the sub-group node. 
@@ -91,11 +91,11 @@ function Invoke-NinjaGetNotification {
             $BodyNode.SetAttribute('hint-wrap', 'true') | Out-Null
         }
         # Create the actions node in the XML.
-        $Actions = $ToastTemplate.CreateElement('actions') | Out-Null
+        $Actions = $ToastTemplate.CreateElement('actions')
         # Add the first button to the toast template if required.
         if ($ButtonText) {
             # Create the first button node in the XML.
-            $Button = $ToastTemplate.CreateElement('action') | Out-Null
+            $Button = $ToastTemplate.CreateElement('action')
             # Set the content attribute of the first button node.
             $Button.SetAttribute('content', $ButtonText) | Out-Null
             # Set the arguments attribute of the first button node.
@@ -113,7 +113,7 @@ function Invoke-NinjaGetNotification {
         # Add the dismiss button to the toast template if required.
         if ($DismissButton) {
             # Create the dismiss button node in the XML.
-            $Dismiss = $ToastTemplate.CreateElement('action') | Out-Null
+            $Dismiss = $ToastTemplate.CreateElement('action')
             # Set the content attribute of the dismiss button node.
             $Dismiss.SetAttribute('content', '') | Out-Null
             # Set the arguments attribute of the dismiss button node.
@@ -125,9 +125,9 @@ function Invoke-NinjaGetNotification {
         }
 
         # Create the tag node for the application name.
-        $Tag = $ToastTemplate.CreateElement('tag') | Out-Null
+        $Tag = $ToastTemplate.CreateElement('tag')
         # Create a text node for the application name.
-        $TagTextNode = $ToastTemplate.CreateTextNode($AppName) | Out-Null
+        $TagTextNode = $ToastTemplate.CreateTextNode($AppName)
         # Append the text node to the tag node.
         $Tag.AppendChild($TagTextNode) | Out-Null
         # Append the visual node to the toast template.
@@ -167,7 +167,7 @@ function Invoke-NinjaGetNotification {
             # Load the toast template XML.
             $ToastTemplateXml.LoadXml($ToastTemplate.OuterXml)
             # Specify the app identifier.
-            $AppId = 'Windows.SystemToast.NinjaGet.Notification'
+            $AppId = 'NinjaGet.Notifications'
             # Prepare the toast notification.
             $ToastNotification = [Windows.UI.Notifications.ToastNotification]::new($ToastTemplateXml)
             # Bubble up the toast tag.

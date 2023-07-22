@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<toast>
+  <visual>
+    <binding template="ToastGeneric">
+      <image placement="appLogoOverride" src="C:\ProgramData\NinjaGet\resources\success.png" />
+      <text>Google Chrome has been uninstalled.</text>
+      <text>Google Chrome has been successfully uninstalled.</text>
+    </binding>
+  </visual>
+  <actions />
+  <tag>Google Chrome</tag>
+</toast>

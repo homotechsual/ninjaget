@@ -1,165 +1,265 @@
-
-# Get the path to the WinGet executable and prepare it for use.
-function Get-WinGetCommand {
-    # Get the WinGet path (for use when running in SYSTEM context).
-    $WinGetPathToResolve = Join-Path -Path $ENV:ProgramFiles -ChildPath 'WindowsApps\Microsoft.DesktopAppInstaller_*_*__8wekyb3d8bbwe'
-    $ResolveWinGetPath = Resolve-Path -Path $WinGetPathToResolve | Sort-Object {
-        [version]($_.Path -replace '^[^\d]+_((\d+\.)*\d+)_.*', '$1')
-    }
-    if ($ResolveWinGetPath) {
-        # If we have multiple versions - use the latest.
-        $WinGetPath = $ResolveWinGetPath[-1].Path
-    }
-    # Get the WinGet exe location.
-    $WinGetExePath = Get-Command -Name winget.exe -CommandType Application -ErrorAction SilentlyContinue
-    if ($WinGetExePath) {
-        # Running in user context.
-        $Script:WinGet = $WinGetExePath.Path
-    } elseif (Test-Path -Path (Join-Path $WinGetPath 'winget.exe')) {
-        # Running in SYSTEM context.
-        $Script:WinGet = Join-Path $WinGetPath 'winget.exe'
-    } else {
-        Write-NGLog -LogMsg 'WinGet not installed or couldn''t be detected!' -LogColour 'Red'
-        break
-    }
-    # Pre-accept the source agreements using the `list` command.
-    $Null = & $Script:WinGet list --accept-source-agreements -s winget
-    # Log the WinGet version and path.
-    $WingetVer = & $Script:WinGet --version
-    Write-NGLog "Winget Version: $WingetVer"
-    Write-NGLog -LogMsg "Using WinGet path: $Script:WinGet"
-}
-# Set the default installation scope for WinGet to machine.
-# Set Scope Machine function - sets WinGet's default installation scope to machine.
-function Set-ScopeMachine {
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'Low')]
-    param ()
-    # Get the WinGet settings path.
-    if ([System.Security.Principal.WindowsIdentity]::GetCurrent().IsSystem) {
-        # Running in SYSTEM context.
-        $SettingsPath = "$ENV:WinDir\System32\config\systemprofile\AppData\Local\Microsoft\WinGet\Settings\"
-        $SettingsFile = Join-Path -Path $SettingsPath -ChildPath 'settings.json'
-    } else {
-        # Running in user context.
-        $SettingsPath = "$ENV:LocalAppData\Packages\Microsoft.DesktopAppInstaller_8wekyb3d8bbwe\LocalState\"
-        $SettingsFile = Join-Path -Path $SettingsPath -ChildPath 'settings.json'
-    }
-    # Create the settings directory if it doesn't exist.
-    if (!(Test-Path $SettingsPath)) {
-        New-Item -Path $SettingsPath -ItemType Directory -Force
-    }
-    # Check if the settings file already exists.
-    if (Test-Path $SettingsFile) {
-        # Check if the settings file already has the correct scope.
-        $WinGetConfig = Get-Content $SettingsFile | Where-Object { $_ -notmatch '//' } | ConvertFrom-Json
-    }
-    if (!$WinGetConfig) {
-        # Initialise a blank WinGet config object.
-        $WinGetConfig = @{}
-    }
-    if ($WinGetConfig.installBehavior.preferences) {
-        Add-Member -InputObject $WinGetConfig.installBehavior.preferences -MemberType NoteProperty -Name 'scope' -Value 'Machine' -Force
-    } else {
-        $Scope = New-Object -TypeName PSObject -Property $(@{ scope = 'Machine' })
-        $Preference = New-Object -TypeName PSObject -Property $(@{ preferences = $Scope })
-        Add-Member -InputObject $WinGetConfig -MemberType NoteProperty -Name 'installBehavior' -Value $Preference -Force
-    }
-    if ($PSCmdlet.ShouldProcess('WinGet is currently configured to install applications for the current user only. Do you want to change this to install applications for all users?', 'WinGet installation scope.', 'Changing WinGet installation scope to machine.')) {
-        $WinGetConfig | ConvertTo-Json | Out-File -FilePath $SettingsFile -Encoding 'utf8' -Force
-    }
-}
-# Confirm Install function - confirms the installation of an application.
-function Confirm-AppInstalled {
-    param(
-        # The application ID.
-        [string]$ApplicationId,
-        # The application version.
-        [string]$ApplicationVersion
-    )
-    # Populate the tracking file with all installed apps.
-    $null = & $Script:WinGet export -s winget -o $Script:InstalledAppsTrackingFile --include-versions
-    $JSON = Get-Content $Script:InstalledAppsTrackingFile -ErrorAction SilentlyContinue -Raw | ConvertFrom-Json
-    $Packages = $JSON.Sources.Packages
-    # Remove the tracking file.
-    Remove-Item -Path $Script:InstalledAppsTrackingFile -Force
-    # Check for the specific application and version.
-    $Apps = $Packages | Where-Object { $_.PackageIdentifier -eq $ApplicationId -and $_.PackageVersion -like "$ApplicationVersion*" }
-    # Boolean return based on whether the application is installed.
-    if ($Apps) {
+# Test NinjaGet installed - make sure that the NinjaGet setup has run by testing the NinjaGet registry key exists.
+function Test-NinjaGetInstalled {
+    if (Test-Path -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NinjaGet') {
         return $true
     } else {
         return $false
     }
 }
-# Confirm Existence function - confirms the existence of an application.
-function Confirm-AppExists ([string]$ApplicationId) {
-    # Get the results of `winget show` for the application.
-    $WinGetApp = & $Script:WinGet show --id $ApplicationId -e --accept-source-agreements -s winget | Out-String
-    # Boolean return based on whether the application exists.
-    if ($WinGetApp -match [regex]::Escape($ApplicationId)) {
-        Write-NGLog -LogMsg "Application '$ApplicationId' exists in WinGet repository." -LogColour 'Cyan'
+# Test internet connection - tests if the computer has an internet connection.
+function Test-InternetConnection {
+    $TestURI = 'https://raw.githubusercontent.com/homotechsual/ninjaget/main/LICENSE.md'
+    $InternetConnection = Test-Connection -ComputerName 'www.google.com' -Count 1 -Quiet
+    if ($InternetConnection) {
+        Write-NGLog -LogMsg 'Internet connection is available.' -LogColour 'Green'
         return $true
     } else {
-        Write-NGLog -LogMsg "Application '$ApplicationId' does not exist in WinGet repository." -LogColour 'Red'
+        Write-NGLog -LogMsg 'Internet connection is not available.' -LogColour 'Red'
+        return $false
+    }
+}
+# Test metered connection - tests if the network connection is metered.
+function Test-MeteredConnection {
+    [void][Windows.Networking.Connectivity.NetworkInformation, Windows, ContentType = WindowsRuntime]
+    $InternetConnectionProfile = [Windows.Networking.Connectivity.NetworkInformation]::GetInternetConnectionProfile()
+    $ConnectivityCost = $InternetConnectionProfile.GetConnectionCost()
+    if ($ConnectivityCost.NetworkCostType -in @([Windows.Networking.Connectivity.NetworkCostType]::Fixed, [Windows.Networking.Connectivity.NetworkCostType]::Variable)) {
+        Write-NGLog -LogMsg 'Network connection is metered.' -LogColour 'DarkMagenta'
+        return $true
+    } else {
+        Write-NGLog -LogMsg 'Network connection is not metered.' -LogColour 'Green'
         return $false
     }
 }
 # Tracking function - tracks the installation of applications.
 function Write-Tracking ([string]$ApplicationId, [string]$Operation) {
     # Get the tracking file content and convert from JSON.
-    $Tracking = Get-Content $Script:TrackingFile -ErrorAction SilentlyContinue -Raw | ConvertFrom-Json
+    $ExistingTracking = Get-Content $Script:OperationsTrackingFile -ErrorAction SilentlyContinue -Raw | ConvertFrom-Json
+    # If the tracking file is empty, create a new object.
+    if (!$ExistingTracking) {
+        $Tracking = [PSCustomObject]@{
+            Install   = [System.Collections.Generic.List[object]]::new()
+            Uninstall = [System.Collections.Generic.List[object]]::new()
+        }
+    } else {
+        # Reconstruct the tracking file objects.
+        $Tracking = [PSCustomObject]@{
+            Install   = [System.Collections.Generic.List[object]]::new()
+            Uninstall = [System.Collections.Generic.List[object]]::new()
+        }
+        $Tracking.Install.AddRange($ExistingTracking.Install)
+        $Tracking.Uninstall.AddRange($ExistingTracking.Uninstall)
+    }
     # Check that the tracking file has the expected structure.
     if (!$Tracking.Install) {
-        $Tracking.Install = [System.Collections.Generic.List[string]]::new()
+        $Tracking.Install = [System.Collections.Generic.List[object]]::new()
     } else {
-        $Tracking.Install = [System.Collections.Generic.List[string]]@($Tracking.Install)
+        $Tracking.Install.AddRange($Tracking.Install)
     }
     if (!$Tracking.Uninstall) {
-        $Tracking.Uninstall = [System.Collections.Generic.List[string]]::new()
+        $Tracking.Uninstall = [System.Collections.Generic.List[object]]::new()
     } else {
-        $Tracking.Uninstall = [System.Collections.Generic.List[string]]@($Tracking.Uninstall)
+        $Tracking.Uninstall.AddRange($Tracking.Uninstall)
     }
     # Check if the application is already tracked to be installed.
     if ($Tracking.Install.Contains($ApplicationId)) {
         if ($Operation -eq 'Uninstall') {
             # Check if the application is still installed.
-            if (!Confirm-AppInstalled $ApplicationId) {
+            if (-not(Confirm-WinGetPackageInstalled -id $ApplicationId)) {
                 # Remove the application from the install tracking and add it to the uninstall tracking.
-                $Tracking.Install.Remove($ApplicationId)
-                $Tracking.Uninstall.Add($ApplicationId)
-                $Tracking | Out-File -FilePath $Script:TrackingFile -Force
-                Write-NGLog -LogMsg "Application '$ApplicationId' is no longer installed. Added to uninstall tracking." -LogColour 'Purple'
+                if ($Tracking.Install.Contains($ApplicationId)) {
+                    $Tracking.Install.Remove($ApplicationId)
+                }
+                if (-not($Tracking.Uninstall.Contains($ApplicationId))) {
+                    $Tracking.Uninstall.Add($ApplicationId)
+                }
+                $Tracking | Out-File -FilePath $Script:OperationsTrackingFile -Force
+                Write-NGLog -LogMsg "Application '$ApplicationId' is no longer installed. Added to uninstall tracking." -LogColour 'DarkMagenta'
             }
         } elseif ($Operation -eq 'Install') {
             # Check if the application is already installed.
-            if (Confirm-AppInstalled $ApplicationId) {
-                Write-NGLog -LogMsg "Application '$ApplicationId' is already installed and is already tracked as installed." -LogColour 'Purple'
+            if (Confirm-WinGetPackageInstalled -id $ApplicationId) {
+                Write-NGLog -LogMsg "Application '$ApplicationId' is already installed and is already tracked as installed." -LogColour 'DarkMagenta'
             }
         }
     } elseif ($Tracking.Uninstall.Contains($ApplicationId)) {
         if ($Operation -eq 'Install') {
             # Check if the application is still uninstalled.
-            if (Confirm-AppInstalled $ApplicationId) {
+            if (Confirm-WinGetPackageInstalled -id $ApplicationId) {
                 # Remove the application from the uninstall tracking and add it to the install tracking.
-                $Tracking.Uninstall.Remove($ApplicationId)
-                $Tracking.Install.Add($ApplicationId)
-                $Tracking | Out-File -FilePath $Script:TrackingFile -Force
-                Write-NGLog -LogMsg "Application '$ApplicationId' is no longer uninstalled. Added to install tracking." -LogColour 'Purple'
+                if ($Tracking.Uninstall.Contains($ApplicationId)) {
+                    $Tracking.Uninstall.Remove($ApplicationId)
+                }
+                if (-not($Tracking.Install.Contains($ApplicationId))) {
+                    $Tracking.Install.Add($ApplicationId)
+                }
+                $Tracking | Out-File -FilePath $Script:OperationsTrackingFile -Force
+                Write-NGLog -LogMsg "Application '$ApplicationId' is no longer uninstalled. Added to install tracking." -LogColour 'DarkMagenta'
             }
         } elseif ($Operation -eq 'Install') {
             # Check if the application is already uninstalled.
-            if (!Confirm-AppInstalled $ApplicationId) {
-                Write-NGLog -LogMsg "Application '$ApplicationId' is already uninstalled and is already tracked as uninstalled." -LogColour 'Purple'
+            if (-not(Confirm-WinGetPackageInstalled -id $ApplicationId)) {
+                Write-NGLog -LogMsg "Application '$ApplicationId' is already uninstalled and is already tracked as uninstalled." -LogColour 'DarkMagenta'
             }
         }
     } else {
         # Add the application to the tracking file.
         if ($Operation -eq 'Uninstall') {
-            $Tracking.Uninstall.Add($ApplicationId)
+            if (-not($Tracking.Uninstall.Contains($ApplicationId))) {
+                $Tracking.Uninstall.Add($ApplicationId)
+            }
         } elseif ($Operation -eq 'Install') {
-            $Tracking.Install.Add($ApplicationId)
+            if (-not($Tracking.Install.Contains($ApplicationId))) {
+                $Tracking.Install.Add($ApplicationId)
+            }
         }
-        $Tracking | Out-File -FilePath $Script:TrackingFile -Force
-        Write-NGLog -LogMsg "Application '$ApplicationId' added to tracking file." -LogColour 'Cyan'
+        $Tracking | ConvertTo-Json -Depth 5 | Out-File -FilePath $Script:OperationsTrackingFile -Force
+        Write-NGLog -LogMsg "Application '$ApplicationId' added to tracking file." -LogColour 'DarkMagenta'
     }
+}
+# Set registry value for all users function - sets a registry value for all users using Active Setup.
+function Set-RegistryValueForAllUsers {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Narrowly defined system state change - sets an Active Setup job to run a registry edit for all users.'
+    )]
+    <#
+    .SYNOPSIS
+        This function uses Active Setup to create a "seeder" key which creates or modifies a user-based registry value
+        for all users on a computer. If the key path doesn't exist to the value, it will automatically create the key and add the value.
+    .EXAMPLE
+        PS> Set-RegistryValueForAllUsers -RegistryInstance @{'Name' = 'Setting'; 'Type' = 'String'; 'Value' = 'someval'; 'Path' = 'SOFTWARE\Microsoft\Windows\Something'}
+    
+        This example would modify the string registry value 'Type' in the path 'SOFTWARE\Microsoft\Windows\Something' to 'someval'
+        for every user registry hive.
+    .PARAMETER RegistryInstance
+        A hash table containing key names of 'Name' designating the registry value name, 'Type' to designate the type
+        of registry value which can be 'String,Binary,Dword,ExpandString or MultiString', 'Value' which is the value itself of the
+        registry value and 'Path' designating the parent registry key the registry value is in.
+    .LINK
+        https://github.com/Adam-the-Automator/Scripts/blob/main/Set-RegistryValueForAllUsers.ps1
+    #>
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        [hashtable[]]$RegistryInstance
+    )
+    try {
+        New-PSDrive -Name HKU -PSProvider Registry -Root Registry::HKEY_USERS | Out-Null
+        
+        ## Change the registry values for the currently logged on user. Each logged on user SID is under HKEY_USERS
+        $LoggedOnSids = (Get-ChildItem HKU: | Where-Object { $_.Name -match 'S-\d-\d+-(\d+-){1,14}\d+' }).PSChildName
+        Write-Verbose "Found $($LoggedOnSids.Count) logged on user SIDs"
+        foreach ($sid in $LoggedOnSids) {
+            Write-Verbose -Message "Loading the user registry hive for the logged on SID $sid"
+            foreach ($instance in $RegistryInstance) {
+                ## Create the key path if it doesn't exist
+                New-Item -Path "HKU:\$sid\$($instance.Path | Split-Path -Parent)" -Name ($instance.Path | Split-Path -Leaf) -Force | Out-Null
+                ## Create (or modify) the value specified in the param
+                Set-ItemProperty -Path "HKU:\$sid\$($instance.Path)" -Name $instance.Name -Value $instance.Value -Type $instance.Type -Force
+            }
+        }
+        
+        ## Create the Active Setup registry key so that the reg add cmd will get ran for each user
+        ## logging into the machine.
+        ## http://www.itninja.com/blog/view/an-active-setup-primer
+        Write-Verbose 'Setting Active Setup registry value to apply to all other users'
+        foreach ($instance in $RegistryInstance) {
+            ## Generate a unique value (usually a GUID) to use for Active Setup
+            $Guid = [guid]::NewGuid().Guid
+            $ActiveSetupRegParentPath = 'HKLM:\Software\Microsoft\Active Setup\Installed Components'
+            ## Create the GUID registry key under the Active Setup key
+            New-Item -Path $ActiveSetupRegParentPath -Name $Guid -Force | Out-Null
+            $ActiveSetupRegPath = "HKLM:\Software\Microsoft\Active Setup\Installed Components\$Guid"
+            Write-Verbose "Using registry path '$ActiveSetupRegPath'"
+            
+            ## Convert the registry value type to one that reg.exe can understand.  This will be the
+            ## type of value that's created for the value we want to set for all users
+            switch ($instance.Type) {
+                'String' {
+                    $RegValueType = 'REG_SZ'
+                }
+                'Dword' {
+                    $RegValueType = 'REG_DWORD'
+                }
+                'Binary' {
+                    $RegValueType = 'REG_BINARY'
+                }
+                'ExpandString' {
+                    $RegValueType = 'REG_EXPAND_SZ'
+                }
+                'MultiString' {
+                    $RegValueType = 'REG_MULTI_SZ'
+                }
+                default {
+                    throw "Registry type '$($instance.Type)' not recognized"
+                }
+            }
+            
+            ## Build the registry value to use for Active Setup which is the command to create the registry value in all user hives
+            $ActiveSetupValue = 'reg add "{0}" /v {1} /t {2} /d {3} /f' -f "HKCU\$($instance.Path)", $instance.Name, $RegValueType, $instance.Value
+            Write-Verbose -Message "Active setup value is '$ActiveSetupValue'"
+            ## Create the necessary Active Setup registry values
+            Set-ItemProperty -Path $ActiveSetupRegPath -Name '(Default)' -Value 'Active Setup Test' -Force
+            Set-ItemProperty -Path $ActiveSetupRegPath -Name 'Version' -Value '1' -Force
+            Set-ItemProperty -Path $ActiveSetupRegPath -Name 'StubPath' -Value $ActiveSetupValue -Force
+        }
+    } catch {
+        Write-Warning -Message $_.Exception.Message
+    }
+}
+# Remove file on reboot function - removes a file on reboot.
+function Remove-FileOnReboot {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Narrowly defined system state change - removes a file on reboot.'
+    )]
+    [CmdletBinding()]
+    param(
+        # The path to the file to remove on reboot.
+        [Parameter(Mandatory)]
+        [string]$FilePath
+    )
+    $Mover = @'
+using System;
+using System.Text;
+using System.Runtime.InteropServices;
+public class Mover {
+    public enum MoveFileFlags {
+        MOVEFILE_DELAY_UNTIL_REBOOT = 0x00000004
+    }
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    static extern bool MoveFileEx(string lpExistingFileName, string lpNewFileName, MoveFileFlags dwFlags);
+    public static bool MarkFileDelete (string sourcefile) {
+        return MoveFileEx(sourcefile, null, MoveFileFlags.MOVEFILE_DELAY_UNTIL_REBOOT);         
+    }
+}
+'@
+
+    Add-Type -TypeDefinition $Mover -Language CSharp
+    $RemoveResult = [Mover]::MarkFileDelete($FilePath)
+    if ($RemoveResult) {
+        Write-Verbose -Message ("Successfully marked file '{0}' for removal on reboot" -f $FilePath)
+    } else {
+        Write-Warning -Message ("Failed to mark file '{0}' for removal on reboot" -f $FilePath)
+        throw [ComponentModel.Win32Exception]::new()
+    }
+}
+# Set ACL function - sets the ACL for various NinjaGet files and folders to allow the 'Authenticated Users' group to modify them.
+function Set-NinjaGetACL {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Narrowly defined system state change - altering ACLs for NinjaGet files and folders.'
+    )]
+    [CmdletBinding()]
+    param(
+        # The path to set the ACL for.
+        [string]$Path
+    )
+    $Acl = Get-Acl $Path
+    $Identity = [System.Security.Principal.SecurityIdentifier]::new([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
+    $FileSystemRights = @([System.Security.AccessControl.FileSystemRights]::Read, [System.Security.AccessControl.FileSystemRights]::Modify)
+    $Inheritance = @([System.Security.AccessControl.FileSystemRights]::ObjectInherit, [System.Security.AccessControl.FileSystemRights]::ContainerInherit)
+    $Propagation = [System.Security.AccessControl.PropagationFlags]::None
+    $AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
+    $AccessRule = [System.Security.AccessControl.FileSystemAccessRule]::new($Identity, $FileSystemRights, $Inheritance, $Propagation, $AccessControlType)
+    $Acl.SetAccessRule($AccessRule)
+    Set-Acl -Path $Path -AclObject $Acl
 }

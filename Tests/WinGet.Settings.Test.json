@@ -1,0 +1,11 @@
+{
+    "$schema": "https://aka.ms/winget-settings.schema.json",
+    "installBehavior": {
+        "requirements": {
+            "scope": "machine"
+        },
+        "preferences": {
+            "scope": "machine"
+        }
+    }
+}
