@@ -8,8 +8,28 @@ function Uninstall-NinjaGet {
     # Get the NinjaGet installation path.
     $NinjaGetInstallPath = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NinjaGet\' -Name 'InstallLocation'
     # Get the original setting for StoreAutoDownload.
-    $OriginalStoreAutoDownload = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\NinjaGet\' -Name 'StoreUpdatesOriginalValue'
-
+    $OriginalStoreAutoDownload = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\NinjaGet\' -Name 'StoreUpdatesOriginalValue' -ErrorAction SilentlyContinue
+    # Remove the scheduled tasks.
+    Write-NgLog 'Removing scheduled tasks...' -LogColour 'Yellow'
+    Get-ScheduledTask -TaskName 'NinjaGet Notifier' | Unregister-ScheduledTask -Confirm:$false
+    Get-ScheduledTask -TaskName 'NinjaGet Updater' | Unregister-ScheduledTask -Confirm:$false
+    if ($Script:RemoveSettings) {
+        # Remove the NinjaGet registry key.
+        Write-NgLog 'Removing NinjaGet registry key...' -LogColour 'Yellow'
+    }
+    if ($Script:RemoveLogs) {
+        # Remove the NinjaGet log files.
+        Write-NgLog 'Removing NinjaGet log files...' -LogColour 'Yellow'
+        Remove-Item -Path $Script:LogPath -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    # Empty the NinjaGet installation folder, except for the Logs folder.
+    Write-NgLog 'Removing NinjaGet installation folder...' -LogColour 'Yellow'
+    Get-ChildItem -Path $NinjaGetInstallPath -Exclude 'Logs' | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+    if ($OriginalStoreAutoDownload) {
+        # Reset the StoreAutoDownload setting.
+        Write-NgLog 'Resetting StoreAutoDownload setting...' -LogColour 'Yellow'
+        Set-ItemProperty -Path 'HKLM:\SOFTWARE\NinjaGet\' -Name 'StoreAutoDownload' -Value $OriginalStoreAutoDownload
+    }
 }
 
 # Get latest WinGet function - gets the latest WinGetversion and the download URL for the MSIXBundle from GitHub.
@@ -137,16 +157,19 @@ function Test-NinjaGetPrerequisites {
         Install-WinGet
     }
     # Test that store app updates are enabled.
-    $StoreAppUpdatesEnabled = Get-ItemProperty -Path 'HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore' -Name 'AutoDownload' -ErrorAction SilentlyContinue
+    $StoreAppUpdatesEnabled = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore' -Name 'AutoDownload' -ErrorAction SilentlyContinue
     if ($StoreAppUpdatesEnabled -eq '2') {
         Write-NGLog 'Store app updates are not enabled!' -LogColour 'Red'
-        Enable-StoreUpdates
-    } else {
+        Set-StoreUpdates -OriginalValue $StoreAppUpdatesEnabled
+    } elseif ($StoreAppUpdatesEnabled -eq '4') {
         Write-NGLog 'Store app updates are enabled!' -LogColour 'Cyan'
     }
 }
 # Enable store app updates function - enables store app updates.
-function Enable-StoreUpdates {
+function Set-StoreUpdates {
+    [Diagnostics.CodeAnalysis.SuppressMessageAttribute(
+        'PSUseShouldProcessForStateChangingFunctions', '', Justification = 'Narrowly defined system state change - setting store updates.'
+    )]
     param(
         # The original value of the AutoDownload registry value.
         [int]$OriginalValue = $null
@@ -261,7 +284,15 @@ function Register-NinjaGetUpdaterScheduledTask {
 }
 # Scheduled task function - creates a scheduled task for NinjaGet notifications.
 function Register-NinjaGetNotificationsScheduledTask {
-    $taskAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$InstallPath\VBS\hideui.vbs`" `"powershell.exe -NoProfile -File `"$InstallPath\PS\Send-NinjaGetNotification.ps1`""
+    param(
+        # Disable use of Visual Basic Script to hide the console window when triggering the user notification.
+        [bool]$DisableVBS = $true
+    )
+    if ($DisableVBS) {
+        $taskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-WindowStyle `"Hidden`" -NoProfile -File `"$InstallPath\PS\Send-NinjaGetNotification.ps1`""
+    } else {
+        $taskAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$InstallPath\VBS\hideui.vbs`" `"powershell.exe -NoProfile -File `"$InstallPath\PS\Send-NinjaGetNotification.ps1`""
+    }
     $TaskServicePrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-11'
     $TaskSettings = New-ScheduledTaskSettingsSet -Compatibility Win8 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit '00:05:00'
     $ScheduledTask = New-ScheduledTask -Action $TaskAction -Principal $TaskServicePrincipal -Settings $TaskSettings

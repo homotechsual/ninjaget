@@ -40,6 +40,8 @@ param (
     [string]$NotificationImageURL,
     # The title of the user notification application.
     [string]$NotificationTitle,
+    # Disable use of Visual Basic Script to hide the console window when triggering the user notification.
+    [bool]$DisableVBS = $true,
     # Set the program name to show in the add/remove programs list.
     [string]$ProgramName = 'NinjaGet',
     # Set the program publisher to show in the add/remove programs list.
@@ -56,9 +58,12 @@ param (
     # Require only machine-scoped packages to be installed.
     [bool]$MachineScopeOnly,
     # Use task scheduler to run NinjaGet update jobs.
-    [bool]$UseTaskScheduler
+    [bool]$UseTaskScheduler,
+    # Remove the NinjaGet settings from the registry. Used with the Uninstall operation.
+    [bool]$RemoveSettings,
+    # Remove the NinjaGet logs. Used with the Uninstall operation.
+    [bool]$RemoveLogs
 )
-
 # Initialization function - sets up the environment for NinjaGet.
 function Initialize-NinjaGet {
     # Store a variable for the current user's name (removing any characters not safe for filenames).
@@ -78,7 +83,7 @@ function Initialize-NinjaGet {
     $Script:Version = Get-Content -Path (Join-Path -Path $PSScriptRoot -ChildPath 'version.txt')
     # Get the NinjaGet log path setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryLogPath = Get-NinjaGetSetting -Setting 'LogPath'
-    if ($LogPath) {
+    if ($logpath) {
         $Script:LogPath = $LogPath
     } elseif ($RegistryLogPath) {
         $Script:LogPath = $RegistryLogPath
@@ -294,12 +299,26 @@ switch ($Script:Operation) {
             Register-NinjaGetProgramEntry -DisplayName $ProgramName -Publisher $ProgramPublisher
             Register-NotificationApp -DisplayName $NotificationTitle -ImageURL $NotificationImageURL
             Register-NinjaGetUpdaterScheduledTask -TimeToUpdate $UpdateTime -UpdateInterval $UpdateInterval -UpdateOnLogin $UpdateOnLogin
-            Register-NinjaGetNotificationsScheduledTask
+            Register-NinjaGetNotificationsScheduledTask -DisableVBS $DisableVBS
             $NinjaGetSettings = @{
-                'NotificationLevel' = $NotificationLevel
-                'AutoUpdate' = $AutoUpdate
-                'AutoUpdateBlocklist' = $AutoUpdateBlocklist
-                'MachineScopeOnly' = $MachineScopeOnly
+                'LogPath' = $Script:LogPath
+                'TrackingPath' = $Script:TrackingPath
+                'NotificationLevel' = $Script:NotificationLevel
+                'AutoUpdate' = $Script:AutoUpdate
+                'AutoUpdateBlocklist' = $Script:AutoUpdateBlocklist
+                'RMMPlatform' = $Script:RMMPlatform
+                'LastRunField' = $Script:LastRunField
+                'LastRunStatusField' = $Script:LastRunStatusField
+                'InstallField' = $Script:InstallField
+                'UninstallField' = $Script:UninstallField
+                'NotificationImageURL' = $Script:NotificationImageURL
+                'NotificationTitle' = $Script:NotificationTitle
+                'UpdateInterval' = $Script:UpdateInterval
+                'UpdateTime' = $Script:UpdateTime
+                'UpdateOnLogin' = $Script:UpdateOnLogin
+                'DisableOnMetered' = $Script:DisableOnMetered
+                'MachineScopeOnly' = $Script:MachineScopeOnly
+                'UseTaskScheduler' = $Script:UseTaskScheduler
             }
             Register-NinjaGetSettings @NinjaGetSettings
             Set-ScopeMachine -MachineScopeOnly $MachineScopeOnly
@@ -326,6 +345,7 @@ switch ($Script:Operation) {
     }
     'Process' {
         $Script:InstallOK = 0
+        $Script:UninstallOK = 0
         $AppsToInstall = Get-AppsToInstall -AppInstallField $Script:InstallField
         foreach ($App in $AppsToInstall) {
             Install-Application -ApplicationId $App
