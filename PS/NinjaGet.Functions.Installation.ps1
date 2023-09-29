@@ -80,7 +80,7 @@ function Update-WinGetFromStore {
     # Send the update command to the Microsoft Store using the MDM bridge.
     Get-CimInstance -Namespace 'root\cimv2\mdm\dmmap' -ClassName 'MDM_EnterpriseModernAppManagement_AppManagement01' | Invoke-CimMethod -MethodName UpdateScanMethod
     # If no target version is specified, get the latest version from GitHub.
-    if (!$TargetVersion) {
+    if (!$TargetVersion) {z
         $TargetVersion = (Get-LatestWinGet).Version
     }
     # Wait for the update to complete - wait in 30 second intervals until the WaitTime is reached.
@@ -90,9 +90,40 @@ function Update-WinGetFromStore {
         $WaitTime -= 0.5
     } until ($WaitTime -eq 0 -or (Get-AppxPackage -Name 'Microsoft.DesktopAppInstaller').Version -eq $TargetVersion)
 }
-# Install WinGet function - installs WinGet if it is not already installed or is out of date.
+# Install Store App function - installs a store app using the MDM bridge.
+## Inspired by and adapted from: https://oliverkieselbach.com/2020/04/22/how-to-completely-change-windows-10-language-with-intune/
+function Install-MicrosoftStoreApp {
+    param(
+        # The app ID of the store app to install.
+        [string]$AppId,
+        # The SKUID to use for the install params.
+        [int]$SKUID = 0016
+    )
+    # Get the package family name.
+    $AppLockerDataResponse = Invoke-WebRequest -Uri "https://bspmts.mp.microsoft.com/v1/public/catalog/Retail/Products/$AppId/applockerdata" -UseBasicParsing
+    $AppLockerData = $AppLockerDataResponse.Content | ConvertFrom-Json
+    $PackageFamilyName = $AppLockerData.PackageFamilyName
+    # Build the CIM session and instance.
+    $CIMNamespace = 'root\cimv2\mdm\dmmap'
+    $OMAURI = './Vendor/MSFT/EnterpriseModernAppManagement/AppInstallation'
+    $CIMSession = New-CimSession
+    $CIMInstance = [Microsoft.Management.Infrastructure.CimInstance]::New('MDM_EnterpriseModernAppManagement_AppInstallation01_01', $CIMNamespace)
+    $CIMParentProperty = [Microsoft.Management.Infrastructure.CimProperty]::Create('ParentID', $OMAURI, 'String', 'Key')
+    $CIMInstance.CimInstanceProperties.Add($CIMParentProperty)
+    $CIMInstanceIdProperty = [Microsoft.Management.Infrastructure.CimProperty]::Create('InstanceID', $PackageFamilyName, 'String', 'Key')
+    $CIMInstance.CimInstanceProperties.Add($CIMInstanceIdProperty)
+    $Flags = 0
+    $CIMParameterValue = [Security.SecurityElement]::Escape($('<Application id="{0}" flags="{1}" skuid="{2}" />' -f $AppId, $Flags, $SKUID))
+    $CIMParametersCollection = [Microsoft.Management.Infrastructure.CimMethodParametersCollection]::New()
+    $CIMParameter = [Microsoft.Management.Infrastructure.CimMethodParameter]::Create('param', $CIMParameterValue, 'String', 'In')
+    $CIMParametersCollection.Add($CIMParameter)
+    $StoreInstallInstance = $CIMSession.CreateInstance($CIMNamespace, $CIMInstance)
+    # Invoke the install method.
+    $CIMSession.InvokeMethod($CIMNamespace, $StoreInstallInstance, 'StoreInstallMethod', $CIMParametersCollection)
+}
+# Install WinGet function (MSIX) - installs WinGet if it is not already installed or is out of date using the MSIX bundle from GitHub.
 function Install-WinGetFromMSIX {
-    Write-NGLog 'WinGet not installed or out of date. Installing/updating...' -LogColour 'Yellow' # No sense determining this dynamically - we have to update the version check above anyway.
+    Write-NGLog 'WinGet not installed or out of date. Installing/updating using MSIX...' -LogColour 'Yellow'
     $WinGetFileName = [Uri]$Script:WinGetURL | Select-Object -ExpandProperty Segments | Select-Object -Last 1
     $WebClient = New-Object System.Net.WebClient
     $PrerequisitesPath = Join-Path -Path $Script:InstallPath -ChildPath 'Prerequisites'
@@ -107,6 +138,21 @@ function Install-WinGetFromMSIX {
     } finally {
         Remove-Item -Path $WinGetDownloadPath -Force -ErrorAction SilentlyContinue
     }
+}
+# Install WinGet function (Store) - installs WinGet if it is not already installed or is out of date using the MDM bridge.
+function Install-WinGetFromStore {
+    param(
+        # How long to wait for the update to complete. Value is in minutes.
+        [int]$WaitTime = 10
+    )
+    Write-NGLog 'WinGet not installed. Installing from store. This might take upto 10 minutes...' -LogColour 'Yellow'
+    $WinGetAppId = '9NBLGGH4NNS1'
+    Install-MicrosoftStoreApp -AppId $WinGetAppId
+    do {
+        Write-NGLog 'Waiting for WinGet update to complete...' -LogColour 'Yellow'
+        Start-Sleep -Seconds 30
+        $WaitTime -= 0.5
+    } until (($WaitTime -eq 0) -or (Get-AppxProvisionedPackage -Online | Where-Object { $_.DisplayName -eq 'Microsoft.DesktopAppInstaller' } -ErrorAction SilentlyContinue))
 }
 # Prerequisite test function - checks if the script can run.
 function Test-NinjaGetPrerequisites {
@@ -154,7 +200,11 @@ function Test-NinjaGetPrerequisites {
             Update-WinGetFromStore
         }
     } else {
-        Install-WinGet
+        if (-not($Script:UseMSIX)) {
+            Install-WinGetFromStore
+        } else {
+            Install-WinGetFromMSIX
+        }
     }
     # Test that store app updates are enabled.
     $StoreAppUpdatesEnabled = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore' -Name 'AutoDownload' -ErrorAction SilentlyContinue
@@ -288,11 +338,7 @@ function Register-NinjaGetNotificationsScheduledTask {
         # Disable use of Visual Basic Script to hide the console window when triggering the user notification.
         [bool]$DisableVBS = $true
     )
-    if ($DisableVBS) {
-        $taskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-WindowStyle `"Hidden`" -NoProfile -File `"$InstallPath\PS\Send-NinjaGetNotification.ps1`""
-    } else {
-        $taskAction = New-ScheduledTaskAction -Execute 'wscript.exe' -Argument "`"$InstallPath\VBS\hideui.vbs`" `"powershell.exe -NoProfile -File `"$InstallPath\PS\Send-NinjaGetNotification.ps1`""
-    }
+    $taskAction = New-ScheduledTaskAction -Execute 'conhost.exe' -Argument "--headless `"powershell.exe -WindowStyle Hidden -NoProfile -File `"$InstallPath\PS\Send-NinjaGetNotification.ps1`""
     $TaskServicePrincipal = New-ScheduledTaskPrincipal -GroupId 'S-1-5-11'
     $TaskSettings = New-ScheduledTaskSettingsSet -Compatibility Win8 -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit '00:05:00'
     $ScheduledTask = New-ScheduledTask -Action $TaskAction -Principal $TaskServicePrincipal -Settings $TaskSettings

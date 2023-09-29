@@ -40,8 +40,6 @@ param (
     [string]$NotificationImageURL,
     # The title of the user notification application.
     [string]$NotificationTitle,
-    # Disable use of Visual Basic Script to hide the console window when triggering the user notification.
-    [bool]$DisableVBS = $true,
     # Set the program name to show in the add/remove programs list.
     [string]$ProgramName = 'NinjaGet',
     # Set the program publisher to show in the add/remove programs list.
