@@ -22,6 +22,8 @@ param (
     [bool]$AutoUpdate,
     # Auto update blocklist. Application ids in this list will not be automatically updated when NinjaGet runs autoupdate jobs.
     [string[]]$AutoUpdateBlocklist,
+    # Update only apps in the install field. The default behaviour will update all eligible apps using `winget upgrade --all`.
+    [bool]$UpdateFromInstallField,
     # The notification level - valid values are Full, SuccessOnly, ErrorOnly and None.
     [ValidateSet('Full', 'SuccessOnly', 'ErrorOnly', 'None')]
     [string]$NotificationLevel,
@@ -60,7 +62,9 @@ param (
     # Remove the NinjaGet settings from the registry. Used with the Uninstall operation.
     [bool]$RemoveSettings,
     # Remove the NinjaGet logs. Used with the Uninstall operation.
-    [bool]$RemoveLogs
+    [bool]$RemoveLogs,
+    # Ignore the auto update blocklist. Used with the Update operation.
+    [bool]$IgnoreBlocklist
 )
 # Initialization function - sets up the environment for NinjaGet.
 function Initialize-NinjaGet {
@@ -141,7 +145,7 @@ function Initialize-NinjaGet {
     if ($AutoUpdate) {
         $Script:AutoUpdate = $AutoUpdate
     } elseif ($RegistryAutoUpdate) {
-        $Script:AutoUpdate = $RegistryAutoUpdate
+        $Script:AutoUpdate = [bool]$RegistryAutoUpdate
     } else {
         $Script:AutoUpdate = $true
     }
@@ -153,6 +157,15 @@ function Initialize-NinjaGet {
         $Script:AutoUpdateBlocklist = $RegistryAutoUpdateBlocklist
     } else {
         $Script:AutoUpdateBlocklist = [System.Collections.Generic.List[string]]::new()
+    }
+    # Get the NinjaGet update from install field setting, if it's not provided, fall back to the registry and if that fails, use the default.
+    $RegistryUpdateFromInstallField = Get-NinjaGetSetting -Setting 'UpdateFromInstallField'
+    if ($UpdateFromInstallField) {
+        $Script:UpdateFromInstallField = $UpdateFromInstallField
+    } elseif ($RegistryUpdateFromInstallField) {
+        $Script:UpdateFromInstallField = [bool]$RegistryUpdateFromInstallField
+    } else {
+        $Script:UpdateFromInstallField = $false
     }
     # Get the NinjaGet RMM Platform setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryRMMPlatform = Get-NinjaGetSetting -Setting 'RMMPlatform'
@@ -240,7 +253,7 @@ function Initialize-NinjaGet {
     if ($UpdateOnLogin) {
         $Script:UpdateOnLogin = $UpdateOnLogin
     } elseif ($RegistryUpdateOnLogin) {
-        $Script:UpdateOnLogin = $RegistryUpdateOnLogin
+        $Script:UpdateOnLogin = [bool]$RegistryUpdateOnLogin
     } else {
         $Script:UpdateOnLogin = $true
     }
@@ -249,7 +262,7 @@ function Initialize-NinjaGet {
     if ($DisableOnMetered) {
         $Script:DisableOnMetered = $DisableOnMetered
     } elseif ($RegistryDisableOnMetered) {
-        $Script:DisableOnMetered = $RegistryDisableOnMetered
+        $Script:DisableOnMetered = [bool]$RegistryDisableOnMetered
     } else {
         $Script:DisableOnMetered = $true
     }
@@ -258,7 +271,7 @@ function Initialize-NinjaGet {
     if ($MachineScopeOnly) {
         $Script:MachineScopeOnly = $MachineScopeOnly
     } elseif ($RegistryMachineScopeOnly) {
-        $Script:MachineScopeOnly = $RegistryMachineScopeOnly
+        $Script:MachineScopeOnly = [bool]$RegistryMachineScopeOnly
     } else {
         $Script:MachineScopeOnly = $false
     }
@@ -267,13 +280,15 @@ function Initialize-NinjaGet {
     if ($UseTaskScheduler) {
         $Script:UseTaskScheduler = $UseTaskScheduler
     } elseif ($RegistryUseTaskScheduler) {
-        $Script:UseTaskScheduler = $RegistryUseTaskScheduler
+        $Script:UseTaskScheduler = [bool]$RegistryUseTaskScheduler
     } else {
         $Script:UseTaskScheduler = $true
     }
+    # 
     # Set script variables for the current run / job.
     $Script:Operation = $Operation
     $Script:Source = $PackageSource
+    $Script:IgnoreBlocklist = $IgnoreBlocklist
 }
 $OIP = $InformationPreference
 $InformationPreference = 'Continue'
@@ -304,6 +319,7 @@ switch ($Script:Operation) {
                 'NotificationLevel' = $Script:NotificationLevel
                 'AutoUpdate' = $Script:AutoUpdate
                 'AutoUpdateBlocklist' = $Script:AutoUpdateBlocklist
+                'UpdateFromInstallField' = $Script:UpdateFromInstallField
                 'RMMPlatform' = $Script:RMMPlatform
                 'LastRunField' = $Script:LastRunField
                 'LastRunStatusField' = $Script:LastRunStatusField
@@ -350,6 +366,10 @@ switch ($Script:Operation) {
         }
         $OutdatedApps = Get-WinGetOutdatedPackages
         foreach ($App in $OutdatedApps) {
+            if ($App -in $Script:AutoUpdateBlocklist -and (-not($Script:IgnoreBlocklist))) {
+                Write-NGLog -LogMsg "Skipping $App as it is in the autoupdate blocklist." -LogColour 'Yellow'
+                continue
+            }
             Update-Application -Application $App
         }
         if ($Script:InstallOK -gt 0) {
@@ -361,6 +381,21 @@ switch ($Script:Operation) {
         }
         if ($Script:UninstallOK -gt 0) {
             Write-NGLog -LogMsg "Uninstalled $UninstallOK applications" -LogColour 'Green'
+        }
+    }
+    'Update' {
+        Write-NGLog -LogMsg 'Running update operations.' -LogColour 'White'
+        if ($Script:DisableOnMetered -and (Test-MeteredConnection)) {
+            Write-NGLog -LogMsg 'Metered connection detected, exiting.' -LogColour 'Red'
+            exit 1
+        }
+        if (-not(Test-NinjaGetInstalled)) {
+            throw 'NinjaGet is not installed. Please run the update operation as SYSTEM.'
+        }
+        if ($Script:UseTaskScheduler) {
+            Get-ScheduledTask -TaskName 'NinjaGet Updater' | Start-ScheduledTask
+        } else {
+            .\(Join-Path -Path $Script:WorkingDir -ChildPath 'PS\Invoke-NinjaGetUpdates.ps1') -SkipBlockList $Script:IgnoreBlocklist
         }
     }
 }

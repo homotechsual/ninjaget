@@ -80,7 +80,7 @@ function Update-WinGetFromStore {
     # Send the update command to the Microsoft Store using the MDM bridge.
     Get-CimInstance -Namespace 'root\cimv2\mdm\dmmap' -ClassName 'MDM_EnterpriseModernAppManagement_AppManagement01' | Invoke-CimMethod -MethodName UpdateScanMethod
     # If no target version is specified, get the latest version from GitHub.
-    if (!$TargetVersion) {z
+    if (!$TargetVersion) {
         $TargetVersion = (Get-LatestWinGet).Version
     }
     # Wait for the update to complete - wait in 30 second intervals until the WaitTime is reached.
@@ -362,6 +362,7 @@ function Get-NinjaGetSetting {
             'NotificationLevel',
             'AutoUpdate',
             'AutoUpdateBlocklist',
+            'UpdateFromInstallField',
             'DisableOnMetered',
             'MachineScopeOnly',
             'UpdateOnLogin',
@@ -402,6 +403,8 @@ function Register-NinjaGetSettings {
         [int]$AutoUpdate,
         # Auto update blocklist setting.
         [string[]]$AutoUpdateBlocklist,
+        # Update from install field setting.
+        [int]$UpdateFromInstallField,
         # RMM platform setting.
         [ValidateSet('NinjaRMM')]
         [string]$RMMPlatform,
@@ -541,9 +544,21 @@ function Set-NotificationPriority {
         # Set for all users.
         [switch]$AllUsers
     )
+    $NotificationSettingsPath = 'SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings'
+    $AppNotificationSettingsPath = (Join-Path -Path $NotificationSettingsPath -ChildPath 'NinjaGet.Notifications')
+    $AbsoluteRegistryPath = (Join-Path -Path 'HKLM:\' -ChildPath $AppNotificationSettingsPath)
     if (!$AllUsers) {
         # Set for current user only.
-        $RegistryPath = 'HKCU:\SOFTWARE\Microsoft\Windows\CurrentVersion\Notifications\Settings\NinjaGet.Notifications'
-        
+        New-Item -Path $AbsoluteRegistryPath
+        New-ItemProperty -Path $AbsoluteRegistryPath -Name 'AllowUrgentNotifications' -PropertyType 'DWord' -Value 1
+    } else {
+        # Set for all users.
+        $RegistryInstance = @{
+            Name = 'AllowUrgentNotifications'
+            Type = 'Dword'
+            Value = 1
+            Path = $AppNotificationSettingsPath
+        }
+        Set-RegistryValueForAllUsers -RegistryInstance $RegistryInstance
     }
 }

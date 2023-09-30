@@ -148,25 +148,23 @@ function Set-RegistryValueForAllUsers {
     )
     try {
         New-PSDrive -Name HKU -PSProvider Registry -Root Registry::HKEY_USERS | Out-Null
-        
-        ## Change the registry values for the currently logged on user. Each logged on user SID is under HKEY_USERS
-        $LoggedOnSids = (Get-ChildItem HKU: | Where-Object { $_.Name -match 'S-\d-\d+-(\d+-){1,14}\d+' }).PSChildName
-        Write-Verbose "Found $($LoggedOnSids.Count) logged on user SIDs"
-        foreach ($sid in $LoggedOnSids) {
-            Write-Verbose -Message "Loading the user registry hive for the logged on SID $sid"
-            foreach ($instance in $RegistryInstance) {
+        # Change the registry values for the currently logged on user. Each logged on user SID is under HKEY_USERS
+        $LoggedOnSIDs = (Get-ChildItem HKU: | Where-Object { $_.Name -match 'S-\d-\d+-(\d+-){1,14}\d+' }) | Select-Object -ExpandProperty PSChildName
+        Write-Verbose "Found $($LoggedOnSIDs.Count) logged on user SIDs"
+        foreach ($SID in $LoggedOnSIDs) {
+            Write-Verbose -Message "Loading the user registry hive for the logged on SID $SID"
+            foreach ($Instance in $RegistryInstance) {
                 ## Create the key path if it doesn't exist
-                New-Item -Path "HKU:\$sid\$($instance.Path | Split-Path -Parent)" -Name ($instance.Path | Split-Path -Leaf) -Force | Out-Null
+                New-Item -Path "HKU:\$SID\$($Instance.Path | Split-Path -Parent)" -Name ($Instance.Path | Split-Path -Leaf) -Force | Out-Null
                 ## Create (or modify) the value specified in the param
-                Set-ItemProperty -Path "HKU:\$sid\$($instance.Path)" -Name $instance.Name -Value $instance.Value -Type $instance.Type -Force
+                Set-ItemProperty -Path "HKU:\$SID\$($Instance.Path)" -Name $Instance.Name -Value $Instance.Value -Type $Instance.Type -Force
             }
         }
-        
         ## Create the Active Setup registry key so that the reg add cmd will get ran for each user
         ## logging into the machine.
         ## http://www.itninja.com/blog/view/an-active-setup-primer
         Write-Verbose 'Setting Active Setup registry value to apply to all other users'
-        foreach ($instance in $RegistryInstance) {
+        foreach ($Instance in $RegistryInstance) {
             ## Generate a unique value (usually a GUID) to use for Active Setup
             $Guid = [guid]::NewGuid().Guid
             $ActiveSetupRegParentPath = 'HKLM:\Software\Microsoft\Active Setup\Installed Components'
