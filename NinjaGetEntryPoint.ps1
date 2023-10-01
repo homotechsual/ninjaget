@@ -294,7 +294,7 @@ $OIP = $InformationPreference
 $InformationPreference = 'Continue'
 $Script:WorkingDir = $Script:InstallPath
 Write-Debug "Working directory is $WorkingDir"
-$Functions = Get-ChildItem -Path (Join-Path -Path $WorkingDir -ChildPath 'PS') -Filter '*.ps1' -Exclude @('Send-NinjaGetNotification.ps1', 'Invoke-NinjaGetUpdate.ps1') -Recurse
+$Functions = Get-ChildItem -Path (Join-Path -Path $WorkingDir -ChildPath 'PS') -Filter '*.ps1' -Exclude @('Send-NinjaGetNotification.ps1', 'Invoke-NinjaGetUpdates.ps1') -Recurse
 foreach ($Function in $Functions) {
     Write-Verbose ('Importing function file: {0}' -f $Function.FullName)
     . $Function.FullName
@@ -312,7 +312,7 @@ switch ($Script:Operation) {
             Register-NinjaGetProgramEntry -DisplayName $ProgramName -Publisher $ProgramPublisher
             Register-NotificationApp -DisplayName $NotificationTitle -ImageURL $NotificationImageURL
             Register-NinjaGetUpdaterScheduledTask -TimeToUpdate $UpdateTime -UpdateInterval $UpdateInterval -UpdateOnLogin $UpdateOnLogin
-            Register-NinjaGetNotificationsScheduledTask -DisableVBS $DisableVBS
+            Register-NinjaGetNotificationsScheduledTask
             $NinjaGetSettings = @{
                 'LogPath' = $Script:LogPath
                 'TrackingPath' = $Script:TrackingPath
