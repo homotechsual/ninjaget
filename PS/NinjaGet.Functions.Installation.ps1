@@ -363,9 +363,18 @@ function Get-NinjaGetSetting {
             'AutoUpdate',
             'AutoUpdateBlocklist',
             'UpdateFromInstallField',
+            'RMMPlatform',
+            'LastRunField',
+            'LastRunStatusField',
+            'InstallField',
+            'UninstallField',
+            'NotificationImageURL',
+            'NotificationTitle',
+            'UpdateInterval',
+            'UpdateTime',
             'DisableOnMetered',
             'MachineScopeOnly',
-            'UpdateOnLogin',
+            'UseTaskScheduler',
             'StoreUpdatesOriginalValue'
         )]
         [string]$Setting
