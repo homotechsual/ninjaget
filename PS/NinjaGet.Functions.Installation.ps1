@@ -389,7 +389,9 @@ function Get-NinjaGetSetting {
     process {
         # Get the setting
         if (Test-Path -Path $RegistryPath) {
-            $SettingValue = Get-ItemPropertyValue -Path $RegistryPath -Name $Setting -ErrorAction SilentlyContinue
+            if (Get-ItemProperty -Path $RegistryPath -Name $Setting -ErrorAction SilentlyContinue) {
+                $SettingValue = Get-ItemPropertyValue -Path $RegistryPath -Name $Setting -ErrorAction SilentlyContinue
+            }
         }
     }
     end {
