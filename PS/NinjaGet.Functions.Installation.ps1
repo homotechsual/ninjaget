@@ -8,7 +8,10 @@ function Uninstall-NinjaGet {
     # Get the NinjaGet installation path.
     $NinjaGetInstallPath = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NinjaGet\' -Name 'InstallLocation'
     # Get the original setting for StoreAutoDownload.
-    $OriginalStoreAutoDownload = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\NinjaGet\' -Name 'StoreUpdatesOriginalValue' -ErrorAction SilentlyContinue
+    $NinjaGetSettingsRegistryPath = 'HKLM:\SOFTWARE\NinjaGet'
+    if (Test-Path -Path $NinjaGetSettingsRegistryPath) {
+        $OriginalStoreAutoDownload = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\NinjaGet\' -Name 'StoreUpdatesOriginalValue' -ErrorAction SilentlyContinue
+    }
     # Remove the scheduled tasks.
     Write-NgLog 'Removing scheduled tasks...' -LogColour 'Yellow'
     Get-ScheduledTask -TaskName 'NinjaGet Notifier' | Unregister-ScheduledTask -Confirm:$false
@@ -207,7 +210,10 @@ function Test-NinjaGetPrerequisites {
         }
     }
     # Test that store app updates are enabled.
-    $StoreAppUpdatesEnabled = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore' -Name 'AutoDownload' -ErrorAction SilentlyContinue
+    $StorePoliciesRegistryPath = 'HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore'
+    if (Test-Path -Path $StorePoliciesRegistryPath) {
+        $StoreAppUpdatesEnabled = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Policies\Microsoft\WindowsStore' -Name 'AutoDownload' -ErrorAction SilentlyContinue
+    }
     if ($StoreAppUpdatesEnabled -eq '2') {
         Write-NGLog 'Store app updates are not enabled!' -LogColour 'Red'
         Set-StoreUpdates -OriginalValue $StoreAppUpdatesEnabled
@@ -382,7 +388,9 @@ function Get-NinjaGetSetting {
     }
     process {
         # Get the setting
-        $SettingValue = Get-ItemPropertyValue -Path $RegistryPath -Name $Setting -ErrorAction SilentlyContinue
+        if (Test-Path -Path $RegistryPath) {
+            $SettingValue = Get-ItemPropertyValue -Path $RegistryPath -Name $Setting -ErrorAction SilentlyContinue
+        }
     }
     end {
         # If we have a value, return it.
