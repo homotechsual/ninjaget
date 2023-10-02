@@ -15,5 +15,5 @@ function Write-NGLog {
     }
     Write-Information -MessageData $MessageData
     # Write log entry to the log file.
-    $Log | Out-File -FilePath $Script:LogPath -Append
+    $Log | Out-File -FilePath $Script:LogFile -Append
 }

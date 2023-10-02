@@ -104,7 +104,7 @@ function Initialize-NinjaGet {
         $Script:LogFile = Join-Path -Path $Script:LogPath -ChildPath 'NinjaGet.log'
     } else {
         $Script:RunAsSystem = $false
-        $Script:LogFile = Join-Path -Path $Script:LogPath -ChildPath 'NinjaGet.log'
+        $Script:LogFile = Join-Path -Path $Script:LogPath -ChildPath ('NinjaGet_{0}.log' -f $Script:UserName)
     }
     # Create the log file if it doesn't exist.
     if (!(Test-Path $LogFile)) {
