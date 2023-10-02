@@ -257,8 +257,8 @@ function Set-NinjaGetACL {
     $Acl = Get-Acl $Path
     $Identity = [System.Security.Principal.SecurityIdentifier]::new([System.Security.Principal.WellKnownSidType]::AuthenticatedUserSid, $null)
     $FileSystemRights = @([System.Security.AccessControl.FileSystemRights]::Read, [System.Security.AccessControl.FileSystemRights]::Modify)
-    $Inheritance = @([System.Security.AccessControl.FileSystemRights]::ObjectInherit, [System.Security.AccessControl.FileSystemRights]::ContainerInherit)
-    $Propagation = [System.Security.AccessControl.PropagationFlags]::None
+    $Inheritance = [System.Security.AccessControl.FileSystemRights]::ObjectInherit -bor [System.Security.AccessControl.FileSystemRights]::ContainerInherit
+    $Propagation = [System.Security.AccessControl.PropagationFlags]::InheritOnly
     $AccessControlType = [System.Security.AccessControl.AccessControlType]::Allow
     $AccessRule = [System.Security.AccessControl.FileSystemAccessRule]::new($Identity, $FileSystemRights, $Inheritance, $Propagation, $AccessControlType)
     $Acl.SetAccessRule($AccessRule)

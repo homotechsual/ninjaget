@@ -301,8 +301,8 @@ foreach ($Function in $Functions) {
 }
 switch ($Script:Operation) {
     'Setup' {
-        Write-NGLog -LogMsg 'Running setup operations.' -LogColour 'White'
         Initialize-NinjaGet
+        Write-NGLog -LogMsg 'Running setup operations.' -LogColour 'White'
         if ($Script:DisableOnMetered -and (Test-MeteredConnection)) {
             Write-NGLog -LogMsg 'Metered connection detected, exiting.' -LogColour 'Red'
             exit 1
