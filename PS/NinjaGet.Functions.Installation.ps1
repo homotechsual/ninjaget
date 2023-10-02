@@ -260,11 +260,7 @@ function Register-NotificationApp {
         [string]$DisplayName = 'Software Updater',
         [uri]$LogoUri
     )
-    $HKCR = Get-PSDrive -Name HKCR -ErrorAction SilentlyContinue
-    If (!($HKCR)) {
-        $null = New-PSDrive -Name HKCR -PSProvider Registry -Root HKEY_CLASSES_ROOT -Scope Script
-    }
-    $BaseRegPath = 'HKCR:\AppUserModelId'
+    $BaseRegPath = 'Registry::HKEY_CLASSES_ROOT\AppUserModelId'
     $AppId = 'NinjaGet.Notifications'
     $AppRegPath = "$BaseRegPath\$AppId"
     If (!(Test-Path $AppRegPath)) {
@@ -285,7 +281,6 @@ function Register-NotificationApp {
     $null = New-ItemProperty -Path $AppRegPath -Name DisplayName -Value $DisplayName -PropertyType String -Force
     $null = New-ItemProperty -Path $AppRegPath -Name IconUri -Value $IconPath -PropertyType String -Force
     $null = New-ItemProperty -Path $AppRegPath -Name ShowInSettings -Value 0 -PropertyType DWORD -Force
-    $null = Remove-PSDrive -Name HKCR -Force
 }
 # Scheduled task function - creates a scheduled task to run NinjaGet updater.
 function Register-NinjaGetUpdaterScheduledTask {
