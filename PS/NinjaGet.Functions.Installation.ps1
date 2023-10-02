@@ -399,8 +399,10 @@ function Get-NinjaGetSetting {
         if ($SettingValue) {
             return $SettingValue
         } else {
-            # If we don't have a value, log an error and return $null.
-            Write-NGLog -LogMsg ('The setting [{0}] does not have a value set in the registry.' -f $Setting) -LogColour 'DarkYellow'
+            # If we don't have a value, log an error and return $null unless we're skipping logging.
+            if (-not($SkipLog)) {
+                Write-NGLog -LogMsg ('The setting [{0}] does not have a value set in the registry.' -f $Setting) -LogColour 'DarkYellow'
+            }
             return $null
         }
     }
