@@ -372,12 +372,15 @@ function Get-NinjaGetSetting {
             'NotificationTitle',
             'UpdateInterval',
             'UpdateTime',
+            'UpdateOnLogin',
             'DisableOnMetered',
             'MachineScopeOnly',
             'UseTaskScheduler',
             'StoreUpdatesOriginalValue'
         )]
-        [string]$Setting
+        [string]$Setting,
+        # Sometimes we need to skip logging issues here because we're running this function before we have a log file.
+        [switch]$SkipLog
     )
     begin {
         $RegistryPath = 'HKLM:\SOFTWARE\NinjaGet'
@@ -415,7 +418,7 @@ function Register-NinjaGetSettings {
         # Update from install field setting.
         [int]$UpdateFromInstallField,
         # RMM platform setting.
-        [ValidateSet('NinjaRMM')]
+        [ValidateSet('NinjaOne')]
         [string]$RMMPlatform,
         # RMM platform last run field setting.
         [string]$LastRunField,

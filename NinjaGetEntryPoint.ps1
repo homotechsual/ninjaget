@@ -84,7 +84,7 @@ function Initialize-NinjaGet {
     # Set the NinjaGet version.
     $Script:Version = Get-Content -Path (Join-Path -Path $PSScriptRoot -ChildPath 'version.txt')
     # Get the NinjaGet log path setting, if it's not provided, fall back to the registry and if that fails, use the default.
-    $RegistryLogPath = Get-NinjaGetSetting -Setting 'LogPath'
+    $RegistryLogPath = Get-NinjaGetSetting -Setting 'LogPath' -SkipLog
     if ($logpath) {
         $Script:LogPath = $LogPath
     } elseif ($RegistryLogPath) {
