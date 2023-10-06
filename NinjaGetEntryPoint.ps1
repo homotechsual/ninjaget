@@ -352,8 +352,15 @@ function Initialize-NinjaGet {
 }
 $OIP = $InformationPreference
 $InformationPreference = 'Continue'
-Initialize-NinjaGet
-$Script:WorkingDir = $Script:InstallPath
+$InstallLocation = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NinjaGet' -Name 'InstallLocation' -ErrorAction SilentlyContinue
+if (-not $InstallLocation) {
+    $InstallLocation = (Join-Path -Path $ENV:ProgramData -ChildPath 'NinjaGet')
+}
+if (-not (Test-Path -Path $InstallLocation)) {
+    throw 'NinjaGet does not appear to be installed. Please run the setup operation as SYSTEM.'
+    exit 1
+}
+$Script:WorkingDir = $InstallLocation
 Verbose "Working directory is $Script:WorkingDir"
 $ExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
 if ($ExecutionPolicy -ne 'RemoteSigned') {
@@ -368,6 +375,7 @@ foreach ($Function in $Functions) {
 }
 switch ($Script:Operation) {
     'Setup' {
+        Initialize-NinjaGet
         Write-NGLog -LogMsg 'Running setup operations.' -LogColour 'White'
         if ($Script:DisableOnMetered -and (Test-MeteredConnection)) {
             Write-NGLog -LogMsg 'Metered connection detected, exiting.' -LogColour 'Red'
@@ -411,6 +419,7 @@ switch ($Script:Operation) {
         Get-WinGetCommand
     }
     'Info' {
+        Initialize-NinjaGet
         Write-NGLog -LogMsg 'Running info operations.' -LogColour 'White'
         $InstalledApps = (Get-WinGetInstalledPackages -source $Script:Source -acceptSourceAgreements | Select-Object -ExpandProperty Id) -join ' '
         Write-NGLog -LogMsg "Installed applications:`r`n$InstalledApps" -LogColour 'White'
@@ -424,6 +433,7 @@ switch ($Script:Operation) {
         Write-NGLog -LogMsg "Outdated applications:`r`n$OutdatedApps" -LogColour 'White'
     }
     'Process' {
+        Initialize-NinjaGet
         $Script:InstallOK = 0
         $Script:UninstallOK = 0
         $AppsToInstall = Get-AppsToInstall -AppInstallField $Script:InstallField
@@ -450,6 +460,7 @@ switch ($Script:Operation) {
         }
     }
     'Update' {
+        Initialize-NinjaGet
         Write-NGLog -LogMsg 'Running update operations.' -LogColour 'White'
         if ($Script:DisableOnMetered -and (Test-MeteredConnection)) {
             Write-NGLog -LogMsg 'Metered connection detected, exiting.' -LogColour 'Red'
