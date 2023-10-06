@@ -17,11 +17,9 @@ function Invoke-NinjaGetNotification {
         # The action to take when the button is clicked.
         [String]$ButtonAction,
         # Show a dismiss button.
-        [Switch]$DismissButton = $false,
-        # Run in the user's context.
-        [Switch]$UserContext = $false
+        [Switch]$DismissButton = $false
     )
-    if (($Script:NotificationLevel -eq 'Full') -or ($Script:NotificationLevel -eq 'SuccessOnly' -and $MessageType -eq 'Success') -or ($Script:NotificationLevel -eq 'ErrorOnly' -and $MessageType -eq 'Error') -or ($UserContext)) {
+    if (($Script:NotificationLevel -eq 'Full') -or ($Script:NotificationLevel -eq 'SuccessOnly' -and $MessageType -eq 'Success') -or ($Script:NotificationLevel -eq 'ErrorOnly' -and $MessageType -eq 'Error')) {
         # Create an XML toast template.
         [XML]$ToastTemplate = [System.Xml.XmlDocument]::new()
         $ToastTemplate.LoadXml('<?xml version="1.0" encoding="utf-8"?><toast></toast>')
