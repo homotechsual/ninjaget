@@ -354,6 +354,12 @@ $OIP = $InformationPreference
 $InformationPreference = 'Continue'
 $Script:WorkingDir = $Script:InstallPath
 Write-Debug "Working directory is $Script:WorkingDir"
+$ExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
+if ($ExecutionPolicy -ne 'RemoteSigned') {
+    Write-Warning 'Execution policy is not RemoteSigned. Setting to `RemoteSigned` for this process. Please run the following command to set it permanently:'
+    Write-Warning 'Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned'
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+}
 $Functions = Get-ChildItem -Path (Join-Path -Path $Script:WorkingDir -ChildPath 'PS') -Filter '*.ps1' -Exclude @('Send-NinjaGetNotification.ps1', 'Invoke-NinjaGetUpdates.ps1') -Recurse
 foreach ($Function in $Functions) {
     Write-Verbose ('Importing function file: {0}' -f $Function.FullName)
