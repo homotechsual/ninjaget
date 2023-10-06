@@ -293,8 +293,8 @@ function Initialize-NinjaGet {
 $OIP = $InformationPreference
 $InformationPreference = 'Continue'
 $Script:WorkingDir = $Script:InstallPath
-Write-Debug "Working directory is $WorkingDir"
-$Functions = Get-ChildItem -Path (Join-Path -Path $WorkingDir -ChildPath 'PS') -Filter '*.ps1' -Exclude @('Send-NinjaGetNotification.ps1', 'Invoke-NinjaGetUpdates.ps1') -Recurse
+Write-Debug "Working directory is $Script:WorkingDir"
+$Functions = Get-ChildItem -Path (Join-Path -Path $Script:WorkingDir -ChildPath 'PS') -Filter '*.ps1' -Exclude @('Send-NinjaGetNotification.ps1', 'Invoke-NinjaGetUpdates.ps1') -Recurse
 foreach ($Function in $Functions) {
     Write-Verbose ('Importing function file: {0}' -f $Function.FullName)
     . $Function.FullName
