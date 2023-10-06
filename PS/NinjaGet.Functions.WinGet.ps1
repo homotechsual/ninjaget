@@ -561,18 +561,18 @@ function Confirm-WinGetPackageInstalledVersion {
         # Build the Get-WinGetInstalledPackages command arguments.
         $WGCommandArguments = [System.Collections.Generic.List[string]]::new()
         if ($PSBoundParameters.ContainsKey('id')) {
-            $WGCommandArguments.Add('-id')
+            $WGCommandArguments.Add('--id')
             $WGCommandArguments.Add($id.Replace('...', ''))
         }
         if ($PSBoundParameters.ContainsKey('exact')) {
-            $WGCommandArguments.Add('-exact')
+            $WGCommandArguments.Add('--exact')
         }
         if ($PSBoundParameters.ContainsKey('source')) {
-            $WGCommandArguments.Add('-source')
+            $WGCommandArguments.Add('--source')
             $WGCommandArguments.Add($source.Replace('...', ''))
         }
         if ($PSBoundParameters.ContainsKey('acceptSourceAgreements')) {
-            $WGCommandArguments.Add('-acceptSourceAgreements')
+            $WGCommandArguments.Add('--acceptSourceAgreements')
         }
     }
     process {
