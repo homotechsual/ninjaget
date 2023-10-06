@@ -361,7 +361,7 @@ if (-not (Test-Path -Path $InstallLocation)) {
     exit 1
 }
 $Script:WorkingDir = $InstallLocation
-Verbose "Working directory is $Script:WorkingDir"
+Write-Verbose "Working directory is $Script:WorkingDir"
 $ExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
 if ($ExecutionPolicy -ne 'RemoteSigned') {
     Write-Warning 'Execution policy is not RemoteSigned. Setting to `RemoteSigned` for this process. Please run the following command to set it permanently:'
