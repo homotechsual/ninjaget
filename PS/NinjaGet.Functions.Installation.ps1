@@ -457,6 +457,12 @@ function Register-NinjaGetSettings {
     )
     $RegistryPath = 'HKLM:\SOFTWARE\NinjaGet'
     $null = New-Item -Path $RegistryPath -Force
+    if ($LogPath) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'LogPath' -Value $LogPath -Force
+    }
+    if ($TrackingPath) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'TrackingPath' -Value $TrackingPath -Force
+    }
     if ($NotificationLevel) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'NotificationLevel' -Value $NotificationLevel -Force
     }
@@ -466,11 +472,38 @@ function Register-NinjaGetSettings {
     if ($AutoUpdateBlocklist) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'AutoUpdateBlocklist' -Value $AutoUpdateBlocklist -PropertyType 'MultiString' -Force
     }
+    if ($UpdateFromInstallField) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'UpdateFromInstallField' -Value $UpdateFromInstallField -PropertyType DWORD -Force
+    }
     if ($RMMPlatform) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'RMMPlatform' -Value $RMMPlatform -Force
     }
-    if ($RMMPlatformLastRunField) {
-        $null = New-ItemProperty -Path $RegistryPath -Name 'RMMPlatformLastRunField' -Value $RMMPlatformLastRunField -Force
+    if ($LastRunField) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'LastRunField' -Value $RMMPlatformLastRunField -Force
+    }
+    if ($LastRunStatusField) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'LastRunStatusField' -Value $LastRunStatusField -Force
+    }
+    if ($InstallField) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'InstallField' -Value $InstallField -Force
+    }
+    if ($UninstallField) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'UninstallField' -Value $UninstallField -Force
+    }
+    if ($NotificationImageURL) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'NotificationImageURL' -Value $NotificationImageURL -Force
+    }
+    if ($NotificationTitle) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'NotificationTitle' -Value $NotificationTitle -Force
+    }
+    if ($UpdateInterval) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'UpdateInterval' -Value $UpdateInterval -Force
+    }
+    if ($UpdateTime) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'UpdateTime' -Value $UpdateTime -Force
+    }
+    if ($UpdateOnLogin) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'UpdateOnLogin' -Value $UpdateOnLogin -PropertyType DWORD -Force
     }
     if ($DisableOnMetered) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'DisableOnMetered' -Value $DisableOnMetered -PropertyType DWORD -Force
@@ -478,8 +511,8 @@ function Register-NinjaGetSettings {
     if ($MachineScopeOnly) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'MachineScopeOnly' -Value $MachineScopeOnly -PropertyType DWORD -Force
     }
-    if ($UpdateOnLogin) {
-        $null = New-ItemProperty -Path $RegistryPath -Name 'UpdateOnLogin' -Value $UpdateOnLogin -PropertyType DWORD -Force
+    if ($UseTaskScheduler) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'UseTaskScheduler' -Value $UseTaskScheduler -PropertyType DWORD -Force
     }
     if ($StoreUpdatesOriginalValue) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'StoreUpdatesOriginalValue' -Value $StoreUpdatesOriginalValue -PropertyType DWORD -Force
