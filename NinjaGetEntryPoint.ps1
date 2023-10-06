@@ -352,8 +352,9 @@ function Initialize-NinjaGet {
 }
 $OIP = $InformationPreference
 $InformationPreference = 'Continue'
+Initialize-NinjaGet
 $Script:WorkingDir = $Script:InstallPath
-Write-Debug "Working directory is $Script:WorkingDir"
+Verbose "Working directory is $Script:WorkingDir"
 $ExecutionPolicy = Get-ExecutionPolicy -Scope CurrentUser
 if ($ExecutionPolicy -ne 'RemoteSigned') {
     Write-Warning 'Execution policy is not RemoteSigned. Setting to `RemoteSigned` for this process. Please run the following command to set it permanently:'
@@ -367,7 +368,6 @@ foreach ($Function in $Functions) {
 }
 switch ($Script:Operation) {
     'Setup' {
-        Initialize-NinjaGet
         Write-NGLog -LogMsg 'Running setup operations.' -LogColour 'White'
         if ($Script:DisableOnMetered -and (Test-MeteredConnection)) {
             Write-NGLog -LogMsg 'Metered connection detected, exiting.' -LogColour 'Red'
@@ -411,7 +411,6 @@ switch ($Script:Operation) {
         Get-WinGetCommand
     }
     'Info' {
-        Initialize-NinjaGet
         Write-NGLog -LogMsg 'Running info operations.' -LogColour 'White'
         $InstalledApps = (Get-WinGetInstalledPackages -source $Script:Source -acceptSourceAgreements | Select-Object -ExpandProperty Id) -join ' '
         Write-NGLog -LogMsg "Installed applications:`r`n$InstalledApps" -LogColour 'White'
