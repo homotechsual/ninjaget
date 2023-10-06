@@ -75,10 +75,13 @@ function Initialize-NinjaGet {
     # Set the NinjaGet install path setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryInstallPath = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NinjaGet' -Name 'InstallLocation' -ErrorAction SilentlyContinue
     if ($InstallPath) {
+        Write-Verbose 'Install path provided, using that.'
         $Script:InstallPath = $InstallPath
     } elseif ($RegistryInstallPath) {
+        Write-Verbose 'Install path found in registry, using that.'
         $Script:InstallPath = $RegistryInstallPath
     } else {
+        Write-Verbose 'Install path not provided, using default.'
         $Script:InstallPath = (Join-Path -Path $ENV:ProgramData -ChildPath 'NinjaGet')
     }
     # Set the NinjaGet version.
@@ -86,10 +89,13 @@ function Initialize-NinjaGet {
     # Get the NinjaGet log path setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryLogPath = Get-NinjaGetSetting -Setting 'LogPath' -SkipLog
     if ($logpath) {
+        Write-Verbose 'Log path provided, using that.'
         $Script:LogPath = $LogPath
     } elseif ($RegistryLogPath) {
+        Write-Verbose 'Log path found in registry, using that.'
         $Script:LogPath = $RegistryLogPath
     } else {
+        Write-Verbose 'Log path not provided, using default.'
         $Script:LogPath = (Join-Path -Path $Script:InstallPath -ChildPath 'Logs')
     }
     # Create the NinjaGet log path if it doesn't exist.
@@ -113,10 +119,13 @@ function Initialize-NinjaGet {
     # Get the NinjaGet tracking path setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryTrackingPath = Get-NinjaGetSetting -Setting 'TrackingPath'
     if ($TrackingPath) {
+        Write-Verbose 'Tracking path provided, using that.'
         $Script:TrackingPath = $TrackingPath
     } elseif ($RegistryTrackingPath) {
+        Write-Verbose 'Tracking path found in registry, using that.'
         $Script:TrackingPath = $RegistryTrackingPath
     } else {
+        Write-Verbose 'Tracking path not provided, using default.'
         $Script:TrackingPath = (Join-Path -Path $Script:InstallPath -ChildPath 'Tracking')
     }
     # Create the NinjaGet tracking path if it doesn't exist.
@@ -134,154 +143,205 @@ function Initialize-NinjaGet {
     # Get the NinjaGet notification level setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryNotificationLevel = Get-NinjaGetSetting -Setting 'NotificationLevel'
     if ($NotificationLevel) {
+        Write-Verbose 'Notification level provided, using that.'
         $Script:NotificationLevel = $NotificationLevel
     } elseif ($RegistryNotificationLevel) {
+        Write-Verbose 'Notification level found in registry, using that.'
         $Script:NotificationLevel = $RegistryNotificationLevel
     } else {
+        Write-Verbose 'Notification level not provided, using default.'
         $Script:NotificationLevel = 'Full'
     }
     # Get the NinjaGet autoupdate setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryAutoUpdate = Get-NinjaGetSetting -Setting 'AutoUpdate'
     if ($AutoUpdate) {
+        Write-Verbose 'Auto update setting provided, using that.'
         $Script:AutoUpdate = $AutoUpdate
     } elseif ($RegistryAutoUpdate) {
+        Write-Verbose 'Auto update setting found in registry, using that.'
         $Script:AutoUpdate = [bool]$RegistryAutoUpdate
     } else {
+        Write-Verbose 'Auto update setting not provided, using default.'
         $Script:AutoUpdate = $true
     }
     # Get the NinjaGet autoupdate blocklist setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryAutoUpdateBlocklist = Get-NinjaGetSetting -Setting 'AutoUpdateBlocklist'
     if ($AutoUpdateBlocklist) {
+        Write-Verbose 'Auto update blocklist provided, using that.'
         $Script:AutoUpdateBlocklist = $AutoUpdateBlocklist
     } elseif ($RegistryAutoUpdateBlocklist) {
+        Write-Verbose 'Auto update blocklist found in registry, using that.'
         $Script:AutoUpdateBlocklist = $RegistryAutoUpdateBlocklist
     } else {
+        Write-Verbose 'Auto update blocklist not provided, using default.'
         $Script:AutoUpdateBlocklist = [System.Collections.Generic.List[string]]::new()
     }
     # Get the NinjaGet update from install field setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryUpdateFromInstallField = Get-NinjaGetSetting -Setting 'UpdateFromInstallField'
     if ($UpdateFromInstallField) {
+        Write-Verbose 'Update from install field setting provided, using that.'
         $Script:UpdateFromInstallField = $UpdateFromInstallField
     } elseif ($RegistryUpdateFromInstallField) {
+        Write-Verbose 'Update from install field setting found in registry, using that.'
         $Script:UpdateFromInstallField = [bool]$RegistryUpdateFromInstallField
     } else {
+        Write-Verbose 'Update from install field setting not provided, using default.'
         $Script:UpdateFromInstallField = $false
     }
     # Get the NinjaGet RMM Platform setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryRMMPlatform = Get-NinjaGetSetting -Setting 'RMMPlatform'
     if ($RMMPlatform) {
+        Write-Verbose 'RMM platform setting provided, using that.'
         $Script:RMMPlatform = $RMMPlatform
     } elseif ($RegistryRMMPlatform) {
+        Write-Verbose 'RMM platform setting found in registry, using that.'
         $Script:RMMPlatform = $RegistryRMMPlatform
     } else {
+        Write-Verbose 'RMM platform setting not provided, using default.'
         $Script:RMMPlatform = 'NinjaOne'
     }
     # Get the NinjaGet last run field setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryLastRunField = Get-NinjaGetSetting -Setting 'LastRunField'
     if ($LastRunField) {
+        Write-Verbose 'Last run field setting provided, using that.'
         $Script:LastRunField = $LastRunField
     } elseif ($RegistryLastRunField) {
+        Write-Verbose 'Last run field setting found in registry, using that.'
         $Script:LastRunField = $RegistryLastRunField
     } else {
+        Write-Verbose 'Last run field setting not provided, using default.'
         $Script:LastRunField = 'NGLastRun'
     }
     # Get the NinjaGet last run status field setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryLastRunStatusField = Get-NinjaGetSetting -Setting 'LastRunStatusField'
     if ($LastRunStatusField) {
+        Write-Verbose 'Last run status field setting provided, using that.'
         $Script:LastRunStatusField = $LastRunStatusField
     } elseif ($RegistryLastRunStatusField) {
+        Write-Verbose 'Last run status field setting found in registry, using that.'
         $Script:LastRunStatusField = $RegistryLastRunStatusField
     } else {
+        Write-Verbose 'Last run status field setting not provided, using default.'
         $Script:LastRunStatusField = 'NGLastRunStatus'
     }
     # Get the NinjaGet install field setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryInstallField = Get-NinjaGetSetting -Setting 'InstallField'
     if ($InstallField) {
+        Write-Verbose 'Install field setting provided, using that.'
         $Script:InstallField = $InstallField
     } elseif ($RegistryInstallField) {
+        Write-Verbose 'Install field setting found in registry, using that.'
         $Script:InstallField = $RegistryInstallField
     } else {
+        Write-Verbose 'Install field setting not provided, using default.'
         $Script:InstallField = 'NGInstall'
     }
     # Get the NinjaGet uninstall field setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryUninstallField = Get-NinjaGetSetting -Setting 'UninstallField'
     if ($UninstallField) {
+        Write-Verbose 'Uninstall field setting provided, using that.'
         $Script:UninstallField = $UninstallField
     } elseif ($RegistryUninstallField) {
+        Write-Verbose 'Uninstall field setting found in registry, using that.'
         $Script:UninstallField = $RegistryUninstallField
     } else {
+        Write-Verbose 'Uninstall field setting not provided, using default.'
         $Script:UninstallField = 'NGUninstall'
     }
     # Get the NinjaGet notification image URL setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryNotificationImageURL = Get-NinjaGetSetting -Setting 'NotificationImageURL'
     if ($NotificationImageURL) {
+        Write-Verbose 'Notification image URL setting provided, using that.'
         $Script:NotificationImageURL = $NotificationImageURL
     } elseif ($RegistryNotificationImageURL) {
+        Write-Verbose 'Notification image URL setting found in registry, using that.'
         $Script:NotificationImageURL = $RegistryNotificationImageURL
     } else {
+        Write-Verbose 'Notification image URL setting not provided, using default.'
         $Script:NotificationImageURL = 'https://raw.githubusercontent.com/homotechsual/NinjaGet/main/resources/applications.png'
     }
     # Get the NinjaGet notification title setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryNotificationTitle = Get-NinjaGetSetting -Setting 'NotificationTitle'
     if ($NotificationTitle) {
+        Write-Verbose 'Notification title setting provided, using that.'
         $Script:NotificationTitle = $NotificationTitle
     } elseif ($RegistryNotificationTitle) {
+        Write-Verbose 'Notification title setting found in registry, using that.'
         $Script:NotificationTitle = $RegistryNotificationTitle
     } else {
+        Write-Verbose 'Notification title setting not provided, using default.'
         $Script:NotificationTitle = 'NinjaGet'
     }
     # Get the NinjaGet update interval setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryUpdateInterval = Get-NinjaGetSetting -Setting 'UpdateInterval'
     if ($UpdateInterval) {
+        Write-Verbose 'Update interval setting provided, using that.'
         $Script:UpdateInterval = $UpdateInterval
     } elseif ($RegistryUpdateInterval) {
+        Write-Verbose 'Update interval setting found in registry, using that.'
         $Script:UpdateInterval = $RegistryUpdateInterval
     } else {
+        Write-Verbose 'Update interval setting not provided, using default.'
         $Script:UpdateInterval = 'Daily'
     }
     # Get the NinjaGet update time setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryUpdateTime = Get-NinjaGetSetting -Setting 'UpdateTime'
     if ($UpdateTime) {
+        Write-Verbose 'Update time setting provided, using that.'
         $Script:UpdateTime = $UpdateTime
     } elseif ($RegistryUpdateTime) {
+        Write-Verbose 'Update time setting found in registry, using that.'
         $Script:UpdateTime = $RegistryUpdateTime
     } else {
+        Write-Verbose 'Update time setting not provided, using default.'
         $Script:UpdateTime = '16:00'
     }
     # Get the NinjaGet update on login setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryUpdateOnLogin = Get-NinjaGetSetting -Setting 'UpdateOnLogin'
     if ($UpdateOnLogin) {
+        Write-Verbose 'Update on login setting provided, using that.'
         $Script:UpdateOnLogin = $UpdateOnLogin
     } elseif ($RegistryUpdateOnLogin) {
+        Write-Verbose 'Update on login setting found in registry, using that.'
         $Script:UpdateOnLogin = [bool]$RegistryUpdateOnLogin
     } else {
+        Write-Verbose 'Update on login setting not provided, using default.'
         $Script:UpdateOnLogin = $true
     }
     # Get the NinjaGet disable on metered connections setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryDisableOnMetered = Get-NinjaGetSetting -Setting 'DisableOnMetered'
     if ($DisableOnMetered) {
+        Write-Verbose 'Disable on metered connections setting provided, using that.'
         $Script:DisableOnMetered = $DisableOnMetered
     } elseif ($RegistryDisableOnMetered) {
+        Write-Verbose 'Disable on metered connections setting found in registry, using that.'
         $Script:DisableOnMetered = [bool]$RegistryDisableOnMetered
     } else {
+        Write-Verbose 'Disable on metered connections setting not provided, using default.'
         $Script:DisableOnMetered = $true
     }
     # Get the NinjaGet machine scope only setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryMachineScopeOnly = Get-NinjaGetSetting -Setting 'MachineScopeOnly'
     if ($MachineScopeOnly) {
+        Write-Verbose 'Machine scope only setting provided, using that.'
         $Script:MachineScopeOnly = $MachineScopeOnly
     } elseif ($RegistryMachineScopeOnly) {
+        Write-Verbose 'Machine scope only setting found in registry, using that.'
         $Script:MachineScopeOnly = [bool]$RegistryMachineScopeOnly
     } else {
+        Write-Verbose 'Machine scope only setting not provided, using default.'
         $Script:MachineScopeOnly = $false
     }
     # Get the NinjaGet use task scheduler setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryUseTaskScheduler = Get-NinjaGetSetting -Setting 'UseTaskScheduler'
     if ($UseTaskScheduler) {
+        Write-Verbose 'Use task scheduler setting provided, using that.'
         $Script:UseTaskScheduler = $UseTaskScheduler
     } elseif ($RegistryUseTaskScheduler) {
+        Write-Verbose 'Use task scheduler setting found in registry, using that.'
         $Script:UseTaskScheduler = [bool]$RegistryUseTaskScheduler
     } else {
+        Write-Verbose 'Use task scheduler setting not provided, using default.'
         $Script:UseTaskScheduler = $true
     }
     # 
