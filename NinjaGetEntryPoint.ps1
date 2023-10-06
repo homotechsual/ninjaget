@@ -405,6 +405,7 @@ switch ($Script:Operation) {
         Get-WinGetCommand
     }
     'Info' {
+        Initialize-NinjaGet
         Write-NGLog -LogMsg 'Running info operations.' -LogColour 'White'
         $InstalledApps = (Get-WinGetInstalledPackages -source $Script:Source -acceptSourceAgreements | Select-Object -ExpandProperty Id) -join ' '
         Write-NGLog -LogMsg "Installed applications:`r`n$InstalledApps" -LogColour 'White'
