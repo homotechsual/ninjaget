@@ -420,6 +420,7 @@ switch ($Script:Operation) {
     }
     'Info' {
         Initialize-NinjaGet
+        Get-WinGetCommand
         Write-NGLog -LogMsg 'Running info operations.' -LogColour 'White'
         $InstalledApps = (Get-WinGetInstalledPackages -source $Script:Source -acceptSourceAgreements | Select-Object -ExpandProperty Id) -join ' '
         Write-NGLog -LogMsg "Installed applications:`r`n$InstalledApps" -LogColour 'White'
@@ -434,6 +435,7 @@ switch ($Script:Operation) {
     }
     'Process' {
         Initialize-NinjaGet
+        Get-WinGetCommand
         $Script:InstallOK = 0
         $Script:UninstallOK = 0
         $AppsToInstall = Get-AppsToInstall -AppInstallField $Script:InstallField
@@ -461,6 +463,7 @@ switch ($Script:Operation) {
     }
     'Update' {
         Initialize-NinjaGet
+        Get-WinGetCommand
         Write-NGLog -LogMsg 'Running update operations.' -LogColour 'White'
         if ($Script:DisableOnMetered -and (Test-MeteredConnection)) {
             Write-NGLog -LogMsg 'Metered connection detected, exiting.' -LogColour 'Red'
