@@ -479,7 +479,7 @@ function Register-NinjaGetSettings {
         $null = New-ItemProperty -Path $RegistryPath -Name 'RMMPlatform' -Value $RMMPlatform -Force
     }
     if ($LastRunField) {
-        $null = New-ItemProperty -Path $RegistryPath -Name 'LastRunField' -Value $RMMPlatformLastRunField -Force
+        $null = New-ItemProperty -Path $RegistryPath -Name 'LastRunField' -Value $LastRunField -Force
     }
     if ($LastRunStatusField) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'LastRunStatusField' -Value $LastRunStatusField -Force
