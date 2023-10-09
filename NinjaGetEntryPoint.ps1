@@ -20,6 +20,8 @@ param (
     [System.IO.DirectoryInfo]$TrackingPath,
     # Allow the "install" application ids to be automatically update when NinjaGet runs autoupdate jobs.
     [bool]$AutoUpdate,
+     # Allow NinjaGet to run in standlone mode.
+    [bool]$Standalone,
     # Auto update blocklist. Application ids in this list will not be automatically updated when NinjaGet runs autoupdate jobs.
     [string[]]$AutoUpdateBlocklist,
     # Update only apps in the install field. The default behaviour will update all eligible apps using `winget upgrade --all`.
@@ -151,6 +153,54 @@ function Initialize-NinjaGet {
     } else {
         Write-Verbose 'Notification level not provided, using default.'
         $Script:NotificationLevel = 'Full'
+    }
+     # Get the NinjaGet standalone setting, if it's not provided, fall back to the registry and if that fails, use the default.
+    $RegistryStandalone = Get-NinjaGetSetting -Setting 'Standalone'
+    if ($Standalone) {
+        Write-Verbose 'Standalone setting provided, using that.'
+        $Script:Standalonee = $Standalone
+    } elseif ($RegistryStandalone) {
+        Write-Verbose 'Standalone setting found in registry, using that.'
+        $Script:Standalone = [bool]$RegistryStandalone
+    } else {
+        Write-Verbose 'Standalone setting not provided, using default.'
+        $Script:Standalone = $false
+    }
+    # Get the NinjaGet AppToInstallStandalone setting, if it's not provided, fall back to the registry and if that fails, use the default.
+    $RegistryStandaloneAppsToInstall = Get-NinjaGetSetting -Setting 'StandaloneAppsToInstall'
+    if ($StandaloneAppsToInstall) {
+        Write-Verbose 'StandaloneAppsToInstall setting provided, using that.'
+        $Script:StandaloneAppsToInstall = $StandaloneAppsToInstall
+    } elseif ($RegistryStandaloneAppsToInstall) {
+        Write-Verbose 'StandaloneAppsToInstall setting found in registry, using that.'
+        $Script:StandaloneAppsToInstall = $RegistryStandaloneAppsToInstall
+    } else {
+        Write-Verbose 'Standalone setting not provided, using default.'
+        $Script:StandaloneAppsToInstall = "replacewithapplications"
+    }
+    # Get the NinjaGet AppToUninstallStandalone setting, if it's not provided, fall back to the registry and if that fails, use the default.
+    $RegistryStandaloneAppsToUninstall = Get-NinjaGetSetting -Setting 'StandaloneAppsToUninstall'
+    if ($AppToUninstallStandalone) {
+        Write-Verbose 'StandaloneAppsToUninstall setting provided, using that.'
+        $Script:StandaloneAppsToUninstall = $StandaloneAppsToUninstall
+    } elseif ($RegistryStandaloneAppsToUninstall) {
+        Write-Verbose 'StandaloneAppsToUninstall setting found in registry, using that.'
+        $Script:StandaloneAppsToUninstall = $RegistryStandaloneAppsToUninstall
+    } else {
+        Write-Verbose 'StandaloneAppsToUninstall setting not provided, using default.'
+        $Script:StandaloneAppsToUninstall = "replacewithapplications"
+    }
+    # Get the NinjaGet StandaloneStatus setting, if it's not provided, fall back to the registry and if that fails, use the default.
+    $RegistryStandaloneStatus = Get-NinjaGetSetting -Setting 'StandaloneStatus'
+    if ($StandaloneStatus) {
+        Write-Verbose 'StandaloneStatus setting provided, using that.'
+        $Script:StandaloneStatus = $StandaloneStatus
+    } elseif ($RegistryStandaloneStatus) {
+        Write-Verbose 'StandaloneStatus setting found in registry, using that.'
+        $Script:StandaloneStatus = $RegistryStandaloneStatus
+    } else {
+        Write-Verbose 'Standalone setting not provided, using default.'
+        $Script:StandaloneStatus = "NotRun"
     }
     # Get the NinjaGet autoupdate setting, if it's not provided, fall back to the registry and if that fails, use the default.
     $RegistryAutoUpdate = Get-NinjaGetSetting -Setting 'AutoUpdate'
@@ -385,10 +435,14 @@ switch ($Script:Operation) {
             Test-NinjaGetPrerequisites
             Register-NinjaGetProgramEntry -DisplayName $ProgramName -Publisher $ProgramPublisher
             Register-NotificationApp -DisplayName $NotificationTitle -ImageURL $NotificationImageURL
-            Register-NinjaGetUpdaterScheduledTask -TimeToUpdate $UpdateTime -UpdateInterval $UpdateInterval -UpdateOnLogin $UpdateOnLogin
+            Register-NinjaGetUpdaterScheduledTask -TimeToUpdate $UpdateTime -UpdateInterval $UpdateInterval -UpdateOnLogin $UpdateOnLogin -Standalone $Standalone
             Register-NinjaGetNotificationsScheduledTask
             $NinjaGetSettings = @{
                 'LogPath' = $Script:LogPath
+                'Standalone' = $Script:Standalone
+                'StandaloneStatus' = $Script:StandaloneStatus
+                'StandaloneAppsToInstall' = $Script:StandaloneAppsToInstall
+                'StandaloneAppsToUninstall' = $Script:StandaloneAppsToUninstall
                 'TrackingPath' = $Script:TrackingPath
                 'NotificationLevel' = $Script:NotificationLevel
                 'AutoUpdate' = $Script:AutoUpdate
@@ -475,7 +529,7 @@ switch ($Script:Operation) {
         if ($Script:UseTaskScheduler) {
             Get-ScheduledTask -TaskName 'NinjaGet Updater' | Start-ScheduledTask
         } else {
-            .\(Join-Path -Path $Script:WorkingDir -ChildPath 'PS\Invoke-NinjaGetUpdates.ps1') -SkipBlockList $Script:IgnoreBlocklist
+            .\(Join-Path -Path $Script:WorkingDir -ChildPath 'PS\Invoke-NinjaGetUpdates.ps1') -SkipBlockList $Script:IgnoreBlocklist -Standalone $Script:Standalone
         }
     }
 }

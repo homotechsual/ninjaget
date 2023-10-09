@@ -1,8 +1,11 @@
 [CmdletBinding()]
 param(
     # Skip the blocklist check.
-    [bool]$SkipBlocklist = $false
+    [bool]$SkipBlocklist = $false,
+    # Standalone Mode
+    [bool]$Standalone = $false
 )
+$Script:Standalone = $Standalone
 $WorkingDir = Get-ItemPropertyValue -Path 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\NinjaGet' -Name 'InstallLocation' -ErrorAction SilentlyContinue
 if (-not($WorkingDir)) {
     throw 'The NinjaGet installation directory could not be found in the registry. NinjaGet may not be properly installed.'   
