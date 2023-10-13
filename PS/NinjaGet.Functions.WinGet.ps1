@@ -162,8 +162,9 @@ function Start-WinGetProcess {
     $Process = [System.Diagnostics.Process]::new()
     $Process.StartInfo = $ProcessInfo
     $Process.Start() | Out-Null
-    $Process.WaitForExit()
     [string[]]$WinGetProcessOutput = $Process.StandardOutput.ReadToEnd()
+    $Process.WaitForExit()
+
     Write-Debug "WinGet process output: $WinGetProcessOutput"
     Write-Debug "WinGet exit code: $($Process.ExitCode)"
     if ($Process.ExitCode -ne 0 -and !$NoErrorHandling) {

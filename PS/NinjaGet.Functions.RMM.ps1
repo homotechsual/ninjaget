@@ -26,7 +26,12 @@ function Update-LastRunStatus {
         [ValidateSet('Success', 'Failure')]
         [string]$Status
     )
-    if ($Script:RMMPlatform -eq 'NinjaOne') {
+    Write-Verbose 'Standalone mode set to : $Standalone'
+    if ($Script:Standalone) {
+        # Set the last run status.
+        $RegistryPath = 'HKLM:\SOFTWARE\NinjaGet'
+        $null = Set-ItemProperty -Path $RegistryPath -Name $SCript:StandaloneStatus -Value $Status
+    } elseif ($Script:RMMPlatform -eq 'NinjaOne') {
         # Set the last run status.
         Ninja-Property-Set -Name $LastRunStatusField -Value $Status
     } elseif ($Script:RMMPlatform -eq 'Syncro') {
@@ -44,7 +49,11 @@ function Get-AppsToInstall {
         [Parameter(Mandatory)]
         [string]$AppInstallField
     )
-    if ($Script:RMMPlatform -eq 'NinjaOne') {
+    Write-Verbose 'Standalone mode set to : $Standalone'
+    if ($Script:Standalone) {
+        # Get the application install field.
+        $AppsToInstall = Get-NinjaGetSetting -Setting 'StandaloneAppsToInstall'
+    } elseif ($Script:RMMPlatform -eq 'NinjaOne') {
         # Get the application install field.
         $AppsToInstall = Ninja-Property-Get -Name $AppInstallField
     } elseif ($Script:RMMPlatform -eq 'Syncro') {
@@ -64,7 +73,11 @@ function Get-AppsToUninstall {
         [Parameter(Mandatory)]
         [string]$AppUninstallField
     )
-    if ($Script:RMMPlatform -eq 'NinjaOne') {
+    Write-Verbose 'Standalone mode set to : $Standalone'
+    if ($Script:Standalone) {
+        # Get the application uninstall field.
+        $AppsToUninstall = Get-NinjaGetSetting -Setting 'StandaloneAppsToUninstall'
+    } elseif ($Script:RMMPlatform -eq 'NinjaOne') {
         # Get the application uninstall field.
         $AppsToUninstall = Ninja-Property-Get -Name $AppUninstallField
     } elseif ($Script:RMMPlatform -eq 'Syncro') {

@@ -296,9 +296,11 @@ function Register-NinjaGetUpdaterScheduledTask {
         # The update interval.
         [string]$UpdateInterval = 'Daily',
         # Whether to update at logon.
-        [int]$UpdateAtLogon
+        [int]$UpdateAtLogon,
+        # Standalone Mode.
+        [int]$Standalone = $false
     )
-    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -File `"$InstallPath\PS\Invoke-NinjaGetUpdates.ps1`""
+    $TaskAction = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -File `"$InstallPath\PS\Invoke-NinjaGetUpdates.ps1 -Standalone $Standalone`""
     $TaskTriggers = [System.Collections.Generic.List[Object]]@()
     if ($UpdateAtLogon) {
         $LogonTrigger = New-ScheduledTaskTrigger -AtLogOn
@@ -359,6 +361,10 @@ function Get-NinjaGetSetting {
         # The setting to get.
         [ValidateSet(
             'LogPath',
+            'Standalone',
+            'StandaloneStatus',
+            'StandaloneAppsToInstall',
+            'StandaloneAppsToUninstall',
             'TrackingPath',
             'NotificationLevel',
             'AutoUpdate',
@@ -413,6 +419,14 @@ function Register-NinjaGetSettings {
     param(
         # The log file path setting.
         [string]$LogPath,
+        # The standlone mode setting.
+        [int]$Standalone,
+        # The StandaloneStatus mode setting.
+        [string]$StandaloneStatus,
+        # The AppToinstallStandalone mode setting.
+        [string]$StandaloneAppsToInstall,
+        # The AppToUninstallStandalone mode setting.
+        [string]$StandaloneAppsToUninstall,
         # The tracking file path setting.
         [string]$TrackingPath,
         # Notification level setting.
@@ -459,6 +473,18 @@ function Register-NinjaGetSettings {
     $null = New-Item -Path $RegistryPath -Force
     if ($LogPath) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'LogPath' -Value $LogPath -Force
+    }
+    if ($Standalone) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'Standalone' -Value $Standalone -PropertyType DWORD -Force
+    }
+    if ($StandaloneStatus) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'StandaloneStatus' -Value $StandaloneStatus -Force
+    }
+    if ($StandaloneAppsToInstall) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'StandaloneAppsToInstall' -Value $StandaloneAppsToInstall -PropertyType 'MultiString' -Force
+    }
+    if ($StandaloneAppsToUninstall) {
+        $null = New-ItemProperty -Path $RegistryPath -Name 'StandaloneAppsToUninstall' -Value $StandaloneAppsToUninstall -PropertyType 'MultiString' -Force
     }
     if ($TrackingPath) {
         $null = New-ItemProperty -Path $RegistryPath -Name 'TrackingPath' -Value $TrackingPath -Force
